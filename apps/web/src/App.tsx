@@ -1,4 +1,5 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { createNote, createTask, listNotes, listTasks, setTaskDone } from './lib/homeRepository';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 import type { Note, Task } from './lib/types';
@@ -153,7 +154,7 @@ export default function App() {
 
       <footer>
         <span>Home v0.1</span>
-        {supabase && <button className="link-button" onClick={() => void supabase.auth.signOut()}>退出登录</button>}
+        {supabase && <button className="link-button" onClick={() => void supabase?.auth.signOut()}>退出登录</button>}
       </footer>
     </main>
   );
