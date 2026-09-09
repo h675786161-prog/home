@@ -1,0 +1,12 @@
+name = "home-shared-life"
+main = "worker.js"
+compatibility_date = "2026-09-09"
+
+# 先执行：npx wrangler kv namespace create HOME_KV
+# 然后把输出的 namespace id 填到这里，再把本文件复制为 wrangler.toml。
+[[kv_namespaces]]
+binding = "HOME_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# HOME_TOKEN 不要写进文件。部署前执行：
+# npx wrangler secret put HOME_TOKEN
