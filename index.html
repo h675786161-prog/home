@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f4efe8" />
+  <meta name="description" content="共同生活系统：待办、记录、项目与每日状态。" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>Home · 共同生活</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">OUR LITTLE HOME</p>
+        <h1>共同生活</h1>
+      </div>
+      <button id="installBtn" class="ghost-btn" hidden>安装到桌面</button>
+    </header>
+
+    <main>
+      <section id="today" class="view active" data-view="today">
+        <div class="hero card">
+          <div>
+            <p id="todayDate" class="muted"></p>
+            <h2 id="greeting">今天也一起过日子。</h2>
+            <p id="todaySummary" class="muted"></p>
+          </div>
+          <div class="sync-pill" id="syncPill">仅本机</div>
+        </div>
+
+        <div class="grid two">
+          <section class="card">
+            <div class="section-head"><h3>今天要做</h3><button class="text-btn" data-open="task">+ 添加</button></div>
+            <div id="todayTasks" class="stack"></div>
+          </section>
+          <section class="card">
+            <div class="section-head"><h3>今日状态</h3></div>
+            <form id="stateForm" class="state-form">
+              <label>心情 <input id="mood" type="range" min="1" max="5" value="3" /></label>
+              <label>精力 <input id="energy" type="range" min="1" max="5" value="3" /></label>
+              <label>一句话 <input id="stateNote" maxlength="100" placeholder="今天怎么样？" /></label>
+              <button class="primary-btn" type="submit">保存今天</button>
+            </form>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="section-head"><h3>最近记下来的事</h3><button class="text-btn" data-open="note">+ 记一下</button></div>
+          <div id="recentNotes" class="stack"></div>
+        </section>
+      </section>
+
+      <section id="tasks" class="view" data-view="tasks">
+        <div class="section-title"><div><p class="eyebrow">TO-DO</p><h2>待办</h2></div><button class="primary-btn" data-open="task">添加待办</button></div>
+        <div class="filters"><button class="chip active" data-task-filter="open">未完成</button><button class="chip" data-task-filter="all">全部</button><button class="chip" data-task-filter="done">已完成</button></div>
+        <div id="taskList" class="stack"></div>
+      </section>
+
+      <section id="notes" class="view" data-view="notes">
+        <div class="section-title"><div><p class="eyebrow">MEMORY</p><h2>生活记录</h2></div><button class="primary-btn" data-open="note">记一条</button></div>
+        <div id="noteList" class="masonry"></div>
+      </section>
+
+      <section id="projects" class="view" data-view="projects">
+        <div class="section-title"><div><p class="eyebrow">PROJECTS</p><h2>一起推进</h2></div><button class="primary-btn" data-open="project">新建项目</button></div>
+        <div id="projectList" class="project-grid"></div>
+      </section>
+
+      <section id="settings" class="view" data-view="settings">
+        <div class="section-title"><div><p class="eyebrow">SYNC</p><h2>连接共享数据</h2></div></div>
+        <section class="card settings-card">
+          <p>不填任何东西也能用，数据会保存在当前浏览器。填好共享 API 后，前端和 MCP 就能读写同一份数据。</p>
+          <label>API 地址 <input id="apiUrl" placeholder="https://your-worker.workers.dev" /></label>
+          <label>访问令牌 <input id="apiToken" type="password" placeholder="只保存在这个浏览器" /></label>
+          <div class="button-row">
+            <button id="saveSync" class="primary-btn">保存连接</button>
+            <button id="pullSync" class="ghost-btn">从云端拉取</button>
+            <button id="pushSync" class="ghost-btn">推送到云端</button>
+          </div>
+          <p id="syncMessage" class="muted"></p>
+        </section>
+        <section class="card settings-card">
+          <h3>数据备份</h3>
+          <div class="button-row">
+            <button id="exportData" class="ghost-btn">导出 JSON</button>
+            <label class="ghost-btn file-btn">导入 JSON<input id="importData" type="file" accept="application/json" hidden /></label>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="nav-btn active" data-nav="today">⌂<span>今天</span></button>
+      <button class="nav-btn" data-nav="tasks">✓<span>待办</span></button>
+      <button class="nav-btn" data-nav="notes">✎<span>记录</span></button>
+      <button class="nav-btn" data-nav="projects">◇<span>项目</span></button>
+      <button class="nav-btn" data-nav="settings">⚙<span>设置</span></button>
+    </nav>
+  </div>
+
+  <dialog id="editorDialog">
+    <form id="editorForm" method="dialog" class="dialog-card">
+      <div class="section-head"><h3 id="editorTitle">添加</h3><button value="cancel" class="icon-btn" aria-label="关闭">×</button></div>
+      <div id="editorFields"></div>
+      <div class="button-row end"><button value="cancel" class="ghost-btn">取消</button><button id="editorSubmit" value="default" class="primary-btn">保存</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
