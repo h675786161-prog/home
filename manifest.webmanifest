@@ -1,0 +1,13 @@
+{
+  "name": "Home · 共同生活",
+  "short_name": "Home",
+  "description": "共同生活里的待办、记录、项目与每日状态。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4efe8",
+  "theme_color": "#f4efe8",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
