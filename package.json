@@ -1,0 +1,21 @@
+{
+  "name": "lingqi-home",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "services/mcp"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @lingqi/home-web",
+    "build:web": "npm run build -w @lingqi/home-web",
+    "typecheck:web": "npm run typecheck -w @lingqi/home-web",
+    "dev:mcp": "npm run dev -w @lingqi/home-mcp",
+    "typecheck:mcp": "npm run typecheck -w @lingqi/home-mcp",
+    "typecheck": "npm run typecheck:web && npm run typecheck:mcp"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
