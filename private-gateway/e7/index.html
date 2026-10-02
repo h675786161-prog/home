@@ -16,6 +16,28 @@ body{display:grid;place-items:center}
 <div id="s">正在载入…</div>
 <script>
 const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english-private-api';
+function patchEnglish(html){
+  // Temporary compatibility patch for the deployed bundle. Once the private
+  // bundle is rebuilt from myself/self-websites/english, these replacements
+  // simply stop matching and become no-ops.
+  const swaps=[
+    ['aria-label="打开当前页面 AI 答疑"','aria-label="打开英语 AI 答疑"'],
+    ['aria-label="当前页面 AI 答疑"','aria-label="英语 AI 答疑"'],
+    ['七 · 当前页面答疑','七 · 英语答疑'],
+    ['<span id="assistantContextBadge">📎 当前页面</span>','<span id="assistantContextBadge">📎 页面参考</span>'],
+    ['placeholder="直接问你现在不懂的地方…" aria-label="当前页面问题"','placeholder="问当前内容，也可以直接输任意单词 / 词组 / 语法…" aria-label="英语问题"'],
+    ['只发送学习内容和你的问题，API Key 不会塞进提示词。','当前页面只作参考，也可以问完全无关的英语内容。API Key 不会塞进提示词。'],
+    ['只围绕用户当前页面和问题回答，不要把 API 配置当成学习内容。','用户的问题优先，当前页面只作可选参考，不是回答范围的限制。不要把 API 配置当成学习内容。'],
+    ['如果当前页面信息不足，明确指出缺什么。','如果问题与当前页面无关，直接回答用户的问题，不要强行关联页面，也不要声称缺少页面上下文。用户可以询问任意英语单词、词组、句子、语法、表达或辨析。若用户只输入一个英文单词或短语，默认说明核心中文意思、常见用法和简短自然例句。'],
+    ["byId('assistantContextBadge').textContent='📎 已读取：'+ctx.label;","byId('assistantContextBadge').textContent='📎 页面参考：'+ctx.label;"],
+    ["byId('assistantInput').value='';byId('assistantStatus').textContent='正在根据 '+ctx.label+' 回答…';","byId('assistantInput').value='';byId('assistantStatus').textContent='正在回答你的问题…';"],
+    ["byId('assistantStatus').textContent='已回答 · 当前上下文：'+ctx.label;","byId('assistantStatus').textContent='已回答 · 页面只作参考：'+ctx.label;"],
+    ["byId('assistantStatus').textContent='对话已清空，当前页面仍会自动读取。';","byId('assistantStatus').textContent='对话已清空。可以问当前页面，也可以问别的英语内容。';"],
+    ["stopPending('已切换学习内容，旧请求已停止');\n      history=[];","stopPending('学习页面已切换，页面参考已更新');"]
+  ];
+  for(const [from,to] of swaps)html=html.replace(from,to);
+  return html;
+}
 (async()=>{
   try{
     const r=await fetch(API,{cache:'no-store'});
@@ -23,7 +45,7 @@ const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english-private
     const data=await r.json();
     if(!data.html)throw new Error('empty html');
     document.open();
-    document.write(data.html);
+    document.write(patchEnglish(data.html));
     document.close();
   }catch(e){
     document.getElementById('s').textContent='载入失败：'+(e.message||e);
