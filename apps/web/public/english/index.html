@@ -35,6 +35,23 @@ h1{font-size:24px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px
 .replyBox.show{display:block}
 .replyEn{font-size:20px;font-weight:700;line-height:1.3}
 .replyZh{font-size:14px;color:var(--muted);margin-top:6px}
+.practice{margin-top:18px;padding:15px;background:#fbf9fd;border:1px solid #eee7f4;border-radius:20px}
+.practiceHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.practiceTitle{font-size:14px;font-weight:750}
+.modeSwitch{display:flex;gap:6px;background:#f1ebf7;padding:4px;border-radius:999px}
+.modeBtn{border:0;background:transparent;color:var(--muted);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.modeBtn.active{background:#fff;color:var(--accent);box-shadow:0 2px 8px rgba(65,45,85,.08)}
+.paperWrap{position:relative;height:190px;border-radius:16px;overflow:hidden;background:
+  repeating-linear-gradient(to bottom,#fff 0,#fff 43px,#eee8f3 44px,#fff 45px);
+  border:1px solid #ece4f1;touch-action:none}
+.traceText{position:absolute;inset:18px;display:flex;align-items:flex-start;justify-content:center;text-align:center;
+  color:rgba(154,120,209,.20);font:700 28px/1.45 "Comic Sans MS","Bradley Hand",cursive;pointer-events:none;user-select:none}
+.traceText.hidden{display:none}
+#writeCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.practiceHint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.45}
+.practiceTools{display:flex;gap:8px;margin-top:10px}
+.practiceTools .btn{flex:1;padding:10px 8px;font-size:13px}
+.dictationMask #en{filter:blur(11px);user-select:none}
 .spacer{flex:1}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
 button{font:inherit}
@@ -79,6 +96,26 @@ button{font:inherit}
       <div class="replyZh" id="replyZh"></div>
     </div>
 
+    <div class="practice" id="practice">
+      <div class="practiceHead">
+        <div class="practiceTitle">✍️ 烂笔头区</div>
+        <div class="modeSwitch">
+          <button class="modeBtn active" id="traceMode">跟写</button>
+          <button class="modeBtn" id="dictationMode">默写</button>
+        </div>
+      </div>
+      <div class="paperWrap" id="paperWrap">
+        <div class="traceText" id="traceText"></div>
+        <canvas id="writeCanvas"></canvas>
+      </div>
+      <div class="practiceHint" id="practiceHint">照着淡字描一遍。写得丑没关系，肌肉记忆不挑字体。</div>
+      <div class="practiceTools">
+        <button class="btn" id="clearCanvas">🧽 擦掉</button>
+        <button class="btn" id="practiceSpeak">🔊 再听一遍</button>
+        <button class="btn" id="revealAnswer">👀 看答案</button>
+      </div>
+    </div>
+
     <div class="spacer"></div>
 
     <div class="actions">
@@ -115,7 +152,7 @@ state.seen = state.seen||{};
 state.known = state.known||{};
 state.review = state.review||{};
 state.streak = state.streak||{last:null,count:0};
-let filter = '全部', current = null;
+let filter = '全部', current = null, practiceMode = 'trace';
 
 const $ = s => document.querySelector(s);
 function save(){ localStorage.setItem('lazyEnglishState',JSON.stringify(state)); updateStats(); }
@@ -149,6 +186,8 @@ function pick(){
   $('#replyBox').classList.remove('show');
   $('#replyEn').textContent=current.reply;
   $('#replyZh').textContent=current.reply_zh;
+  updatePractice();
+  clearWriting();
 }
 function updateStats(){
   $('#seen').textContent=Object.values(state.seen).filter(Boolean).length;
@@ -166,6 +205,62 @@ function speak(){
   const u=new SpeechSynthesisUtterance(current.en);
   u.lang='en-US'; u.rate=.88; speechSynthesis.speak(u);
 }
+
+const canvas=$('#writeCanvas');
+const ctx=canvas.getContext('2d');
+let drawing=false, lastX=0, lastY=0;
+
+function resizeCanvas(){
+  const rect=canvas.getBoundingClientRect();
+  const dpr=Math.max(1,window.devicePixelRatio||1);
+  const old=document.createElement('canvas');
+  old.width=canvas.width; old.height=canvas.height;
+  if(canvas.width&&canvas.height) old.getContext('2d').drawImage(canvas,0,0);
+  canvas.width=Math.round(rect.width*dpr);
+  canvas.height=Math.round(rect.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=3;
+  ctx.strokeStyle='#5f5270';
+}
+function point(e){
+  const r=canvas.getBoundingClientRect();
+  return {x:e.clientX-r.left,y:e.clientY-r.top};
+}
+canvas.addEventListener('pointerdown',e=>{
+  drawing=true; canvas.setPointerCapture(e.pointerId);
+  const p=point(e); lastX=p.x; lastY=p.y;
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!drawing) return;
+  const p=point(e);
+  ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke();
+  lastX=p.x; lastY=p.y;
+});
+function stopDraw(){ drawing=false; }
+canvas.addEventListener('pointerup',stopDraw);
+canvas.addEventListener('pointercancel',stopDraw);
+canvas.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse') stopDraw(); });
+
+function clearWriting(){
+  if(!canvas.width) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+function updatePractice(){
+  if(!current) return;
+  const trace=practiceMode==='trace';
+  $('#traceMode').classList.toggle('active',trace);
+  $('#dictationMode').classList.toggle('active',!trace);
+  $('#traceText').classList.toggle('hidden',!trace);
+  $('#traceText').textContent=current.en;
+  $('#practiceHint').textContent=trace
+    ? '照着淡字描一遍。写得丑没关系，肌肉记忆不挑字体。'
+    : '先听，再凭记忆写。实在想不起来再偷看答案。';
+  document.querySelector('.card').classList.toggle('dictationMask',!trace);
+  $('#revealAnswer').textContent=trace?'👀 看中文':'👀 看答案';
+  if(!trace) setTimeout(speak,160);
+}
+window.addEventListener('resize',()=>setTimeout(resizeCanvas,80));
+setTimeout(resizeCanvas,50);
 const cats=['全部','社交','互联网','日常','实用','待复习'];
 const tabs=$('#tabs');
 cats.forEach(c=>{
@@ -174,6 +269,20 @@ cats.forEach(c=>{
   tabs.appendChild(b);
 });
 $('#speak').onclick=speak;
+$('#practiceSpeak').onclick=speak;
+$('#clearCanvas').onclick=clearWriting;
+$('#traceMode').onclick=()=>{ practiceMode='trace'; updatePractice(); clearWriting(); };
+$('#dictationMode').onclick=()=>{ practiceMode='dictation'; updatePractice(); clearWriting(); };
+$('#revealAnswer').onclick=()=>{
+  if(practiceMode==='dictation'){
+    document.querySelector('.card').classList.remove('dictationMask');
+    $('#traceText').classList.remove('hidden');
+    $('#traceText').textContent=current.en;
+    setTimeout(()=>document.querySelector('.card').classList.add('dictationMask'),2400);
+  }else{
+    $('#zh').classList.toggle('show');
+  }
+};
 $('#showZh').onclick=()=>$('#zh').classList.toggle('show');
 $('#showReply').onclick=()=>$('#replyBox').classList.toggle('show');
 $('#next').onclick=pick;
