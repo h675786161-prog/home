@@ -36,6 +36,62 @@ function patchEnglish(html){
     ["stopPending('已切换学习内容，旧请求已停止');\n      history=[];","stopPending('学习页面已切换，页面参考已更新');"]
   ];
   for(const [from,to] of swaps)html=html.replace(from,to);
+
+  const retryPatch=`<script>
+(()=>{
+  'use strict';
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const transient=error=>{
+    const message=String(error?.message||error||'');
+    return /Failed to fetch|NetworkError|Load failed|fetch failed|ECONN|ENET|网络|连接中断|接口 (502|503|504)/i.test(message);
+  };
+  const original=window.callAI;
+  if(typeof original==='function'&&!original.__englishRetryWrapped){
+    const wrapped=async function(userPrompt,opts={}){
+      try{return await original(userPrompt,opts);}
+      catch(error){
+        if(opts?.signal?.aborted||!transient(error))throw error;
+        const status=document.getElementById('assistantStatus');
+        if(status)status.textContent='连接抖了一下，正在自动重试 1 次…';
+        await sleep(700);
+        if(opts?.signal?.aborted)throw error;
+        return original(userPrompt,opts);
+      }
+    };
+    wrapped.__englishRetryWrapped=true;
+    window.callAI=wrapped;
+  }
+
+  const addRetry=message=>{
+    if(!message||message.querySelector('.assistantRetryActions'))return;
+    const answer=message.querySelector('.aiAnswer');
+    const question=message.querySelector('.aiQuestion')?.textContent?.trim();
+    if(!answer||!question||!/^没接上[:：]/.test(answer.textContent.trim()))return;
+    const row=document.createElement('div');
+    row.className='assistantRetryActions';
+    row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
+    const retry=document.createElement('button');
+    retry.type='button';retry.className='btn primary';retry.textContent='↻ 重试';
+    retry.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
+    retry.onclick=()=>{
+      retry.disabled=true;retry.textContent='重试中…';
+      message.remove();
+      window.englishAssistant?.ask?.(question);
+    };
+    const settings=document.createElement('button');
+    settings.type='button';settings.className='btn';settings.textContent='⚙ API 设置';
+    settings.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
+    settings.onclick=()=>window.englishAssistant?.open?.(true);
+    row.append(retry,settings);answer.append(row);
+    const status=document.getElementById('assistantStatus');
+    if(status)status.textContent='连接失败 · 可以直接重试';
+  };
+  const scan=()=>document.querySelectorAll('#assistantThread .aiMessage').forEach(addRetry);
+  const thread=document.getElementById('assistantThread');
+  if(thread){new MutationObserver(scan).observe(thread,{subtree:true,childList:true,characterData:true});scan();}
+})();
+<\/script>`;
+  if(!html.includes('assistantRetryActions'))html=html.replace('</body>',retryPatch+'</body>');
   return html;
 }
 (async()=>{
