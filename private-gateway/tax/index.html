@@ -34,25 +34,39 @@ button:disabled{opacity:.55;cursor:wait}.msg{min-height:18px;margin-top:10px;fon
   <div class="tiny">登录成功后只在此浏览器保存一个 30 天有效的访问令牌，不保存你的原始访问码。</div>
 </main>
 <script>
-const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/tax-private-api';
+const AUTH_API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/tax-private-api';
+const SITE_API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/tax-site-content';
 const TOKEN_KEY='ling_tax_private_token_v1';
 const form=document.getElementById('loginForm');
 const btn=document.getElementById('loginBtn');
 const msg=document.getElementById('msg');
 function status(text,err=false){msg.textContent=text||'';msg.className='msg'+(err?' err':'')}
+async function post(url,body){
+ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ let data={};try{data=await r.json()}catch{}
+ if(!r.ok){const e=new Error(r.status===401?'访问码不对或登录已过期':(data.error||'载入失败：'+r.status));e.status=r.status;throw e}
+ return data;
+}
+async function renderLatest(token){
+ const data=await post(SITE_API,{token});
+ if(!data.html)throw new Error('没有拿到题本内容');
+ document.open();document.write(data.html);document.close();
+}
 async function loadSite(payload){
-  btn.disabled=true; status('正在验证并载入题本…');
-  try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok) throw new Error(r.status===401?'访问码不对或登录已过期':'载入失败：'+r.status);
-    const data=await r.json();
-    if(data.token)localStorage.setItem(TOKEN_KEY,data.token);
-    if(!data.html)throw new Error('没有拿到题本内容');
-    document.open();document.write(data.html);document.close();
-  }catch(e){
-    if(payload.token)localStorage.removeItem(TOKEN_KEY);
-    status(e.message||'载入失败',true);btn.disabled=false;
+ btn.disabled=true;status('正在验证并载入题本…');
+ try{
+  let token=payload.token||'';
+  if(!token&&payload.access_code){
+   const auth=await post(AUTH_API,{access_code:payload.access_code});
+   token=auth.token||'';
+   if(!token)throw new Error('登录成功但没有拿到会话令牌');
+   localStorage.setItem(TOKEN_KEY,token);
   }
+  await renderLatest(token);
+ }catch(e){
+  if(payload.token||e.status===401)localStorage.removeItem(TOKEN_KEY);
+  status(e.message||'载入失败',true);btn.disabled=false;
+ }
 }
 form.addEventListener('submit',e=>{e.preventDefault();const code=document.getElementById('code').value;if(code)loadSite({access_code:code})});
 const saved=localStorage.getItem(TOKEN_KEY);
