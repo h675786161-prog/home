@@ -92,6 +92,56 @@ function patchEnglish(html){
 })();
 <\/script>`;
   if(!html.includes('assistantRetryActions'))html=html.replace('</body>',retryPatch+'</body>');
+
+  const vocabSafetyPatch=`<script>
+(()=>{
+  'use strict';
+  window.__englishVocabSafety=1;
+  const byId=id=>document.getElementById(id);
+  let repairing=false,lastRepair=0;
+  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';}};
+  const usable=()=>{
+    const root=byId('vocabContent');if(!root)return true;
+    const swipe=root.querySelector('.vocabSwipeCard');
+    if(swipe){
+      const prompt=swipe.querySelector('.vocabSwipePrompt')?.textContent?.trim()||'';
+      const choices=[...root.querySelectorAll('.vocabSwipeChoice')].some(b=>b.textContent.trim().length>2);
+      return !!prompt&&choices;
+    }
+    if(root.querySelector('.vocabTerm')?.textContent?.trim())return true;
+    return !!root.querySelector('#vocabMemoryInline,#vocabAnswer');
+  };
+  const setAll=()=>{
+    const filter=byId('vocabFilter');if(!filter||filter.value==='all')return false;
+    filter.value='all';filter.dispatchEvent(new Event('change',{bubbles:true}));return true;
+  };
+  const repair=()=>{
+    if(repairing||currentView()!=='vocab')return;
+    const root=byId('vocabContent');if(!root)return;
+    const now=Date.now();if(now-lastRepair<220)return;
+    if(/这一组已经清空/.test(root.textContent||'')){lastRepair=now;if(setAll())return;}
+    if(usable())return;
+    repairing=true;lastRepair=now;
+    setTimeout(()=>{
+      try{if(currentView()==='vocab'&&!usable()){if(!setAll())window.certificateUI?.refresh?.();}}
+      finally{setTimeout(()=>{repairing=false;},120);}
+    },60);
+  };
+  try{
+    if(typeof CERT_VOCAB==='object'&&CERT_VOCAB){
+      for(const key of Object.keys(CERT_VOCAB)){
+        const list=Array.isArray(CERT_VOCAB[key])?CERT_VOCAB[key]:[];
+        CERT_VOCAB[key]=list.filter(w=>String(w?.word||'').trim()&&String(w?.meaning||'').trim());
+      }
+    }
+  }catch{}
+  const body=byId('certBody');if(body)new MutationObserver(repair).observe(body,{subtree:true,childList:true,characterData:true});
+  document.addEventListener('click',e=>{if(e.target.closest?.('#vocabKnown,#vocabFlowNext'))setTimeout(repair,280);},true);
+  window.addEventListener('englishcontextchange',()=>setTimeout(repair,20));
+  setTimeout(repair,120);
+})();
+<\/script>`;
+  if(!html.includes('__englishVocabSafety'))html=html.replace('</body>',vocabSafetyPatch+'</body>');
   return html;
 }
 (async()=>{
