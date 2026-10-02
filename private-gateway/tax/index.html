@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>玲的私有学习站</title>
+<style>
+:root{--bg:#f7f3f5;--panel:#fffdfd;--line:#e7dde2;--text:#29252a;--muted:#7c737b;--accent:#9a6f83;--danger:#a85f67}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+body{min-height:100vh;display:grid;place-items:center;padding:22px}
+.card{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 22px 60px rgba(88,61,74,.10)}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#f2ecef;color:#765f6b;font-size:12px;margin-bottom:12px}
+h1{font-size:23px;margin:0 0 8px}.sub{color:var(--muted);font-size:13px;line-height:1.75;margin-bottom:18px}
+input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;font:inherit;outline:none;background:#fff}
+input:focus{border-color:#b79aad;box-shadow:0 0 0 3px rgba(154,111,131,.10)}
+button{width:100%;margin-top:10px;padding:11px 13px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}.msg{min-height:18px;margin-top:10px;font-size:12px;color:var(--muted)}.msg.err{color:var(--danger)}
+.tiny{font-size:11px;color:#948a91;line-height:1.65;margin-top:13px}
+.loading{display:none}.loading.show{display:block}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="badge">🔒 私有入口</div>
+  <h1>玲的三税学习站</h1>
+  <div class="sub">题本正文不在这个公开壳里。验证通过后才会从私有接口载入。</div>
+  <form id="loginForm">
+    <input id="code" type="password" autocomplete="current-password" placeholder="访问码" required autofocus>
+    <button id="loginBtn" type="submit">进入题本</button>
+  </form>
+  <div id="msg" class="msg"></div>
+  <div class="tiny">登录成功后只在此浏览器保存一个 30 天有效的访问令牌，不保存你的原始访问码。</div>
+</main>
+<script>
+const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/tax-private-api';
+const TOKEN_KEY='ling_tax_private_token_v1';
+const form=document.getElementById('loginForm');
+const btn=document.getElementById('loginBtn');
+const msg=document.getElementById('msg');
+function status(text,err=false){msg.textContent=text||'';msg.className='msg'+(err?' err':'')}
+async function loadSite(payload){
+  btn.disabled=true; status('正在验证并载入题本…');
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error(r.status===401?'访问码不对或登录已过期':'载入失败：'+r.status);
+    const data=await r.json();
+    if(data.token)localStorage.setItem(TOKEN_KEY,data.token);
+    if(!data.html)throw new Error('没有拿到题本内容');
+    document.open();document.write(data.html);document.close();
+  }catch(e){
+    if(payload.token)localStorage.removeItem(TOKEN_KEY);
+    status(e.message||'载入失败',true);btn.disabled=false;
+  }
+}
+form.addEventListener('submit',e=>{e.preventDefault();const code=document.getElementById('code').value;if(code)loadSite({access_code:code})});
+const saved=localStorage.getItem(TOKEN_KEY);
+if(saved)loadSite({token:saved});
+</script>
+</body>
+</html>
