@@ -34,6 +34,17 @@ function patchEnglish(html){
   ];
   for(const [from,to] of swaps)html=html.replace(from,to);
 
+  const memoryCompleteFrom=`    saveProgress();render();
+    if(mode==='type')el('memoryInput')?.focus({preventScroll:true});`;
+  const memoryCompleteTo=`    const finished=r.stage===4;
+    saveProgress();render();
+    if(finished&&window.certificateUI?.currentView?.()==='vocab'){
+      setTimeout(()=>document.getElementById('vocabKnown')?.click(),80);
+      return;
+    }
+    if(mode==='type')el('memoryInput')?.focus({preventScroll:true});`;
+  html=html.replace(memoryCompleteFrom,memoryCompleteTo);
+
   const retryPatch=`<script>
 (()=>{
   'use strict';
@@ -91,7 +102,7 @@ function patchEnglish(html){
   window.__englishVocabSafety=1;
   const byId=id=>document.getElementById(id);
   let repairing=false,lastRepair=0;
-  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';}};
+  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';} };
   const usable=()=>{
     const root=byId('vocabContent');if(!root)return true;
     const swipe=root.querySelector('.vocabSwipeCard');
@@ -138,26 +149,26 @@ function patchEnglish(html){
   const memoryAdvancePatch=`<script>
 (()=>{
   'use strict';
-  window.__englishMemoryAutoAdvance=1;
-  let armedUntil=0,advancing=false;
-  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';}};
+  window.__englishMemoryAutoAdvance=2;
+  let advancing=false;
+  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';} };
   const maybeAdvance=()=>{
-    if(advancing||currentView()!=='vocab'||Date.now()>armedUntil)return;
+    if(advancing||currentView()!=='vocab')return;
     const done=document.getElementById('memoryAgain');
     const known=document.getElementById('vocabKnown');
     if(!done||!known||!done.closest('#vocabMemoryInline'))return;
-    advancing=true;armedUntil=0;done.disabled=true;
+    advancing=true;done.disabled=true;
     setTimeout(()=>{
       try{const next=document.getElementById('vocabKnown');if(next&&currentView()==='vocab')next.click();}
       finally{setTimeout(()=>{advancing=false;},450);}
-    },120);
+    },80);
   };
-  document.addEventListener('click',event=>{if(event.target.closest?.('#memoryComplete'))armedUntil=Date.now()+15000;},true);
   const body=document.getElementById('certBody');
   if(body)new MutationObserver(maybeAdvance).observe(body,{subtree:true,childList:true,characterData:true});
+  setTimeout(maybeAdvance,120);
 })();
 <\/script>`;
-  if(!html.includes('__englishMemoryAutoAdvance'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
+  if(!html.includes('__englishMemoryAutoAdvance=2'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
   return html;
 }
 (async()=>{
