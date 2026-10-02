@@ -169,6 +169,44 @@ function patchEnglish(html){
 })();
 <\/script>`;
   if(!html.includes('__englishMemoryAutoAdvance=2'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
+
+  const cardFilterPatch=`<script>
+(()=>{
+  'use strict';
+  if(window.__englishCardContentFilter)return;window.__englishCardContentFilter=1;
+  const KEY='lazyEnglishCardContent',allowed=new Set(['all','word','phrase','sentence']);
+  let type=localStorage.getItem(KEY)||'all',refreshing=false;if(!allowed.has(type))type='all';
+  const originals={};try{for(const [k,v] of Object.entries(CERT_VOCAB||{}))originals[k]=Array.isArray(v)?v.slice():[];}catch{return;}
+  const $=id=>document.getElementById(id),mode=()=>String($('vocabMode')?.value||''),level=()=>String($('certificateSelect')?.value||'C1');
+  const isPhrase=w=>String(w?.word||'').trim().split(/\\s+/).filter(Boolean).length>1;
+  const eligible=(w,k)=>k==='word'?!isPhrase(w):k==='phrase'?isPhrase(w):k==='sentence'?!!String(w?.example||'').trim()&&!!String(w?.translation||'').trim():true;
+  const listFor=(l,k)=>{const base=originals[l]||[];return k==='all'?base:base.filter(w=>eligible(w,k));};
+  const stage=()=>{if(mode()!=='card')return;const l=level(),base=originals[l]||[],next=listFor(l,type);CERT_VOCAB[l]=next.length?next:base;setTimeout(()=>{CERT_VOCAB[l]=base;try{window.certificateUI?.renderHero?.();}catch{}},0);};
+  const sentenceFace=()=>{
+    if(mode()!=='card'||type!=='sentence')return;const w=window.certificateUI?.currentWord?.();if(!w)return;
+    const term=document.querySelector('#vocabContent .vocabTerm'),example=$('vocabExample'),meaning=$('vocabMeaning'),speak=$('vocabSpeak'),reveal=$('vocabReveal');
+    if(term){term.classList.add('vocabSentenceCard');if(typeof tokenizeClickable==='function')term.innerHTML=tokenizeClickable(w.example||'');else term.textContent=w.example||'';try{if(typeof bindWordTaps==='function')bindWordTaps(term,w.example||'');}catch{}}
+    if(example)example.textContent='关联词 / 短语：'+String(w.word||'')+' · '+String(w.meaning||'');
+    if(meaning)meaning.textContent=String(w.translation||'')+'\\n\\n关联词 / 短语：'+String(w.word||'')+' · '+String(w.meaning||'')+(w.chunk?'\\n词块：'+w.chunk:'');
+    if(reveal)reveal.textContent='看翻译 / 关联词';if(speak)speak.onclick=()=>window.englishSpeech?.speak?.(w.example||'',{kind:'sentence'});
+  };
+  const controls=()=>{
+    if(mode()!=='card')return;const row=document.querySelector('.vocabFilterRow');if(!row)return;let wrap=$('vocabCardContentFilter');
+    if(!wrap){wrap=document.createElement('div');wrap.id='vocabCardContentFilter';wrap.className='vocabCardContentFilter';wrap.innerHTML='<span>刷什么</span><div class="vocabCardContentChips"><button type="button" data-card-content="all">词 / 短语</button><button type="button" data-card-content="word">只单词</button><button type="button" data-card-content="phrase">只短语</button><button type="button" data-card-content="sentence">只句子</button></div>';row.after(wrap);wrap.querySelectorAll('[data-card-content]').forEach(b=>b.onclick=()=>{const n=b.dataset.cardContent;if(!allowed.has(n)||n===type)return;type=n;localStorage.setItem(KEY,type);refresh();});}
+    wrap.querySelectorAll('[data-card-content]').forEach(b=>b.classList.toggle('active',b.dataset.cardContent===type));sentenceFace();
+  };
+  const refresh=()=>{
+    if(refreshing||mode()!=='card')return;const l=level(),base=originals[l]||[],available=listFor(l,type);if(!available.length){type='all';localStorage.setItem(KEY,type);try{toast('这个证书暂时没有这一类卡片，已切回词 / 短语');}catch{}}
+    refreshing=true;CERT_VOCAB[l]=listFor(l,type);try{window.certificateUI?.refresh?.();}finally{setTimeout(()=>{CERT_VOCAB[l]=base;try{window.certificateUI?.renderHero?.();}catch{}refreshing=false;controls();},0);}
+  };
+  const style=document.createElement('style');style.textContent='.vocabCardContentFilter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}.vocabCardContentFilter>span{font-size:12px;color:#7b6f84;white-space:nowrap}.vocabCardContentChips{display:flex;gap:7px;flex-wrap:wrap}.vocabCardContentChips button{border:1px solid rgba(120,92,155,.18);background:rgba(255,255,255,.72);color:inherit;border-radius:999px;padding:7px 11px;font:inherit;font-size:12px}.vocabCardContentChips button.active{background:#805ad5;color:white;border-color:#805ad5}.vocabTerm.vocabSentenceCard{font-size:clamp(20px,4.2vw,30px);line-height:1.45;text-align:left}';document.head.append(style);
+  const body=$('certBody');if(body)new MutationObserver(()=>{controls();sentenceFace();}).observe(body,{subtree:true,childList:true});
+  document.addEventListener('click',e=>{if(mode()==='card'&&e.target.closest?.('#vocabKnown'))stage();if(e.target.closest?.('[data-vocab-mode="card"]'))setTimeout(()=>{controls();refresh();},0);},true);
+  document.addEventListener('change',e=>{if(mode()==='card'&&e.target?.id==='vocabFilter')stage();if(e.target?.id==='vocabMode'&&e.target.value==='card')setTimeout(()=>{controls();refresh();},0);},true);
+  setTimeout(()=>{if(mode()==='card'){controls();refresh();}},80);
+})();
+<\/script>`;
+  if(!html.includes('__englishCardContentFilter'))html=html.replace('</body>',cardFilterPatch+'</body>');
   return html;
 }
 (async()=>{
