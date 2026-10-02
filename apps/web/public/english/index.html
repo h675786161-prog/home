@@ -38,9 +38,15 @@ h1{font-size:24px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px
 .practice{margin-top:18px;padding:15px;background:#fbf9fd;border:1px solid #eee7f4;border-radius:20px}
 .practiceHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .practiceTitle{font-size:14px;font-weight:750}
-.modeSwitch{display:flex;gap:6px;background:#f1ebf7;padding:4px;border-radius:999px}
-.modeBtn{border:0;background:transparent;color:var(--muted);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
-.modeBtn.active{background:#fff;color:var(--accent);box-shadow:0 2px 8px rgba(65,45,85,.08)}
+.modeSwitch{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.stagePill{padding:6px 8px;border-radius:999px;background:#f1ebf7;color:var(--muted);font-size:11px;font-weight:700}
+.stagePill.active{background:var(--accent);color:#fff}
+.stagePill.done{background:#e6f4eb;color:#44705a}
+.daily{margin:0 0 12px;background:rgba(255,255,255,.9);border:1px solid #eee8f4;border-radius:18px;padding:12px 14px;box-shadow:0 6px 20px rgba(70,48,95,.06)}
+.dailyTop{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:13px}
+.dailyTop b{font-size:14px}
+.dailyBar{height:8px;background:#eee8f4;border-radius:999px;margin-top:9px;overflow:hidden}
+.dailyFill{height:100%;width:0;background:linear-gradient(90deg,#9a78d1,#b99de0);border-radius:inherit;transition:.25s}
 .paperWrap{position:relative;height:190px;border-radius:16px;overflow:hidden;background:
   repeating-linear-gradient(to bottom,#fff 0,#fff 43px,#eee8f3 44px,#fff 45px);
   border:1px solid #ece4f1;touch-action:none}
@@ -85,6 +91,14 @@ button{font:inherit}
 
   <div class="tabs" id="tabs"></div>
 
+  <div class="daily">
+    <div class="dailyTop">
+      <b>今天只求手熟 ✍️</b>
+      <span id="dailyText">0 / 5 句</span>
+    </div>
+    <div class="dailyBar"><div class="dailyFill" id="dailyFill"></div></div>
+  </div>
+
   <section class="card">
     <div class="kicker" id="cat">今日一条</div>
     <div class="en" id="en">Loading...</div>
@@ -99,9 +113,11 @@ button{font:inherit}
     <div class="practice" id="practice">
       <div class="practiceHead">
         <div class="practiceTitle">✍️ 烂笔头区</div>
-        <div class="modeSwitch">
-          <button class="modeBtn active" id="traceMode">跟写</button>
-          <button class="modeBtn" id="dictationMode">默写</button>
+        <div class="modeSwitch" id="stagePills">
+          <span class="stagePill active">1 描</span>
+          <span class="stagePill">2 抄</span>
+          <span class="stagePill">3 补</span>
+          <span class="stagePill">4 默</span>
         </div>
       </div>
       <div class="paperWrap" id="paperWrap">
@@ -129,18 +145,18 @@ button{font:inherit}
   </section>
 
   <div class="stats">
-    <div class="stat"><b id="seen">0</b><span>看过</span></div>
-    <div class="stat"><b id="known">0</b><span>会了</span></div>
+    <div class="stat"><b id="seen">0</b><span>手写次数</span></div>
+    <div class="stat"><b id="known">0</b><span>今天手熟</span></div>
     <div class="stat"><b id="review">0</b><span>待复习</span></div>
   </div>
 
-  <div class="tip">玩法：先看英文，懒得猜就直接点“看中文”。能看懂就按“这条会了”，看不懂就按“记不住”。没有连续答题惩罚，没有失败动画，没有老师凝视你。人类已经够累了。</div>
+  <div class="tip">玩法：一条句子只做四遍：描一遍、抄一遍、补空一遍、最后默一遍。写完就点下面的大按钮，网站自己往后走。卡住就偷看答案，不扣分，不审判。目标只是让手先记住，脑子爱什么时候跟上什么时候跟上。</div>
 </div>
 
 <div class="bottom">
   <div class="inner">
-    <button class="btn bad" id="forget">🧠 记不住</button>
-    <button class="btn ok" id="know">✓ 这条会了</button>
+    <button class="btn bad" id="forget">🧠 卡住了</button>
+    <button class="btn ok" id="know">✍️ 写完这一遍 →</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -152,7 +168,10 @@ state.seen = state.seen||{};
 state.known = state.known||{};
 state.review = state.review||{};
 state.streak = state.streak||{last:null,count:0};
-let filter = '全部', current = null, practiceMode = 'trace';
+state.writes = state.writes||{};
+state.cycles = state.cycles||{};
+state.dailyDone = state.dailyDone||{};
+let filter = '全部', current = null, practiceStage = 0;
 
 const $ = s => document.querySelector(s);
 function save(){ localStorage.setItem('lazyEnglishState',JSON.stringify(state)); updateStats(); }
@@ -174,12 +193,25 @@ function list(){
   return filter==='全部' ? DATA : DATA.filter(x=>x.cat===filter);
 }
 function indexOfObj(obj){ return DATA.indexOf(obj); }
+function weightedPick(arr){
+  const weighted=arr.map(item=>{
+    const i=indexOfObj(item);
+    const cycles=state.cycles[i]||0;
+    const review=state.review[i]?4:1;
+    return {item,w:review*(1/(cycles+1))};
+  });
+  const total=weighted.reduce((s,x)=>s+x.w,0);
+  let r=Math.random()*total;
+  for(const x of weighted){ r-=x.w; if(r<=0) return x.item; }
+  return weighted[weighted.length-1].item;
+}
 function pick(){
   const arr=list();
-  current=arr[Math.floor(Math.random()*arr.length)];
+  current=weightedPick(arr);
+  practiceStage=0;
   const idx=indexOfObj(current);
   state.seen[idx]=true; save(); touchStreak();
-  $('#cat').textContent=current.cat+' · 随机一句';
+  $('#cat').textContent=current.cat+' · 四遍手熟';
   $('#en').textContent=current.en;
   $('#zh').textContent=current.zh;
   $('#zh').classList.remove('show');
@@ -190,10 +222,16 @@ function pick(){
   clearWriting();
 }
 function updateStats(){
-  $('#seen').textContent=Object.values(state.seen).filter(Boolean).length;
-  $('#known').textContent=Object.values(state.known).filter(Boolean).length;
+  const totalWrites=Object.values(state.writes).reduce((a,b)=>a+(Number(b)||0),0);
+  const today=dayKey();
+  const done=state.dailyDone[today]||{};
+  const doneCount=Object.values(done).filter(Boolean).length;
+  $('#seen').textContent=totalWrites;
+  $('#known').textContent=doneCount;
   $('#review').textContent=Object.values(state.review).filter(Boolean).length;
   $('#streak').textContent='🔥 '+(state.streak.count||0)+' 天';
+  $('#dailyText').textContent=Math.min(doneCount,5)+' / 5 句';
+  $('#dailyFill').style.width=Math.min(100,(doneCount/5)*100)+'%';
 }
 function toast(t){
   const e=$('#toast'); e.textContent=t; e.classList.add('show');
@@ -245,19 +283,47 @@ function clearWriting(){
   if(!canvas.width) return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
 }
+function cloze(text){
+  let n=0;
+  return text.split(/(\s+)/).map(part=>{
+    if(/^\s+$/.test(part)) return part;
+    const m=part.match(/^([A-Za-z’']+)([^A-Za-z’']*)$/);
+    if(!m) return part;
+    n++;
+    const word=m[1];
+    if(word.length<4 || n%2===1) return part;
+    return word[0]+'＿'.repeat(Math.min(6,Math.max(2,word.length-2)))+m[2];
+  }).join('');
+}
 function updatePractice(){
   if(!current) return;
-  const trace=practiceMode==='trace';
-  $('#traceMode').classList.toggle('active',trace);
-  $('#dictationMode').classList.toggle('active',!trace);
-  $('#traceText').classList.toggle('hidden',!trace);
-  $('#traceText').textContent=current.en;
-  $('#practiceHint').textContent=trace
-    ? '照着淡字描一遍。写得丑没关系，肌肉记忆不挑字体。'
-    : '先听，再凭记忆写。实在想不起来再偷看答案。';
-  document.querySelector('.card').classList.toggle('dictationMask',!trace);
-  $('#revealAnswer').textContent=trace?'👀 看中文':'👀 看答案';
-  if(!trace) setTimeout(speak,160);
+  const pills=[...document.querySelectorAll('.stagePill')];
+  pills.forEach((p,i)=>{
+    p.classList.toggle('active',i===practiceStage);
+    p.classList.toggle('done',i<practiceStage);
+  });
+  const card=document.querySelector('.card');
+  card.classList.remove('dictationMask');
+  $('#traceText').classList.add('hidden');
+  $('#zh').classList.remove('show');
+  $('#en').textContent=current.en;
+  $('#revealAnswer').textContent='👀 偷看答案';
+
+  if(practiceStage===0){
+    $('#traceText').classList.remove('hidden');
+    $('#traceText').textContent=current.en;
+    $('#practiceHint').textContent='第 1 遍：沿着淡字描。先让手认识它，脑子可以摸鱼。';
+  }else if(practiceStage===1){
+    $('#practiceHint').textContent='第 2 遍：看着上面的原句，自己抄一遍。';
+  }else if(practiceStage===2){
+    $('#en').textContent=cloze(current.en);
+    $('#practiceHint').textContent='第 3 遍：有些词被挖掉了，想不起来就偷看，别硬扛。';
+  }else{
+    card.classList.add('dictationMask');
+    $('#zh').classList.add('show');
+    $('#practiceHint').textContent='第 4 遍：只看中文，或者听一遍，凭记忆写完整句。';
+    setTimeout(speak,180);
+  }
 }
 window.addEventListener('resize',()=>setTimeout(resizeCanvas,80));
 setTimeout(resizeCanvas,50);
@@ -271,26 +337,56 @@ cats.forEach(c=>{
 $('#speak').onclick=speak;
 $('#practiceSpeak').onclick=speak;
 $('#clearCanvas').onclick=clearWriting;
-$('#traceMode').onclick=()=>{ practiceMode='trace'; updatePractice(); clearWriting(); };
-$('#dictationMode').onclick=()=>{ practiceMode='dictation'; updatePractice(); clearWriting(); };
 $('#revealAnswer').onclick=()=>{
-  if(practiceMode==='dictation'){
-    document.querySelector('.card').classList.remove('dictationMask');
-    $('#traceText').classList.remove('hidden');
-    $('#traceText').textContent=current.en;
-    setTimeout(()=>document.querySelector('.card').classList.add('dictationMask'),2400);
-  }else{
-    $('#zh').classList.toggle('show');
-  }
+  if(!current) return;
+  const card=document.querySelector('.card');
+  const oldText=$('#en').textContent;
+  card.classList.remove('dictationMask');
+  $('#en').textContent=current.en;
+  $('#zh').classList.add('show');
+  toast('给你偷看 2.4 秒 👀');
+  setTimeout(()=>{
+    if(practiceStage===2) $('#en').textContent=cloze(current.en);
+    else $('#en').textContent=current.en;
+    if(practiceStage===3) card.classList.add('dictationMask');
+  },2400);
 };
 $('#showZh').onclick=()=>$('#zh').classList.toggle('show');
 $('#showReply').onclick=()=>$('#replyBox').classList.toggle('show');
 $('#next').onclick=pick;
 $('#know').onclick=()=>{
-  const i=indexOfObj(current); state.known[i]=true; state.review[i]=false; save(); toast('收下了 ✓'); setTimeout(pick,220);
+  if(!current) return;
+  const i=indexOfObj(current);
+  state.writes[i]=(state.writes[i]||0)+1;
+  state.review[i]=false;
+  save();
+  if(practiceStage<3){
+    practiceStage++;
+    clearWriting();
+    updatePractice();
+    toast('这一遍算数 ✍️');
+  }else{
+    state.cycles[i]=(state.cycles[i]||0)+1;
+    state.known[i]=true;
+    const today=dayKey();
+    state.dailyDone[today]=state.dailyDone[today]||{};
+    state.dailyDone[today][i]=true;
+    save();
+    toast('今天先手熟了 ✓');
+    setTimeout(pick,300);
+  }
 };
 $('#forget').onclick=()=>{
-  const i=indexOfObj(current); state.review[i]=true; state.known[i]=false; save(); toast('扔进待复习 🧠'); setTimeout(pick,220);
+  if(!current) return;
+  const i=indexOfObj(current);
+  state.review[i]=true;
+  state.known[i]=false;
+  save();
+  const card=document.querySelector('.card');
+  card.classList.remove('dictationMask');
+  $('#en').textContent=current.en;
+  $('#zh').classList.add('show');
+  toast('卡住就看，没什么可丢人的');
 };
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 updateStats(); pick();
