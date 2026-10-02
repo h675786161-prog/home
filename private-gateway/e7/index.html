@@ -17,9 +17,6 @@ body{display:grid;place-items:center}
 <script>
 const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english-private-api';
 function patchEnglish(html){
-  // Temporary compatibility patch for the deployed bundle. Once the private
-  // bundle is rebuilt from myself/self-websites/english, these replacements
-  // simply stop matching and become no-ops.
   const swaps=[
     ['aria-label="打开当前页面 AI 答疑"','aria-label="打开英语 AI 答疑"'],
     ['aria-label="当前页面 AI 答疑"','aria-label="英语 AI 答疑"'],
@@ -61,7 +58,6 @@ function patchEnglish(html){
     wrapped.__englishRetryWrapped=true;
     window.callAI=wrapped;
   }
-
   const addRetry=message=>{
     if(!message||message.querySelector('.assistantRetryActions'))return;
     const answer=message.querySelector('.aiAnswer');
@@ -73,11 +69,7 @@ function patchEnglish(html){
     const retry=document.createElement('button');
     retry.type='button';retry.className='btn primary';retry.textContent='↻ 重试';
     retry.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
-    retry.onclick=()=>{
-      retry.disabled=true;retry.textContent='重试中…';
-      message.remove();
-      window.englishAssistant?.ask?.(question);
-    };
+    retry.onclick=()=>{retry.disabled=true;retry.textContent='重试中…';message.remove();window.englishAssistant?.ask?.(question);};
     const settings=document.createElement('button');
     settings.type='button';settings.className='btn';settings.textContent='⚙ API 设置';
     settings.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
@@ -142,6 +134,30 @@ function patchEnglish(html){
 })();
 <\/script>`;
   if(!html.includes('__englishVocabSafety'))html=html.replace('</body>',vocabSafetyPatch+'</body>');
+
+  const memoryAdvancePatch=`<script>
+(()=>{
+  'use strict';
+  window.__englishMemoryAutoAdvance=1;
+  let armedUntil=0,advancing=false;
+  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';}};
+  const maybeAdvance=()=>{
+    if(advancing||currentView()!=='vocab'||Date.now()>armedUntil)return;
+    const done=document.getElementById('memoryAgain');
+    const known=document.getElementById('vocabKnown');
+    if(!done||!known||!done.closest('#vocabMemoryInline'))return;
+    advancing=true;armedUntil=0;done.disabled=true;
+    setTimeout(()=>{
+      try{const next=document.getElementById('vocabKnown');if(next&&currentView()==='vocab')next.click();}
+      finally{setTimeout(()=>{advancing=false;},450);}
+    },120);
+  };
+  document.addEventListener('click',event=>{if(event.target.closest?.('#memoryComplete'))armedUntil=Date.now()+15000;},true);
+  const body=document.getElementById('certBody');
+  if(body)new MutationObserver(maybeAdvance).observe(body,{subtree:true,childList:true,characterData:true});
+})();
+<\/script>`;
+  if(!html.includes('__englishMemoryAutoAdvance'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
   return html;
 }
 (async()=>{
