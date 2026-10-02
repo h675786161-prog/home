@@ -16,7 +16,7 @@ body{display:grid;place-items:center}
 <div id="s">正在载入日语庭…</div>
 <script>
 const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/japanese-private-api';
-const ENHANCEMENTS='https://raw.githack.com/h675786161-prog/myself/main/self-websites/japanese/enhancements.js?v=20261003-1';
+const ENHANCEMENTS='https://raw.githack.com/h675786161-prog/myself/main/self-websites/japanese/enhancements.js?v=20261003-2';
 function patchJapanese(html){
   const tag='<script src="'+ENHANCEMENTS+'"><\/script>';
   return html.includes('</body>')?html.replace('</body>',tag+'</body>'):html+tag;
