@@ -4,38 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="theme-color" content="#f6efff">
+<meta name="theme-color" content="#f8f5fb">
 <title>懒人英语语言包</title>
-<style>
-html,body{margin:0;min-height:100%;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}body{display:grid;place-items:center}#s{font-size:13px;padding:18px;text-align:center;line-height:1.7}
-</style>
+<meta http-equiv="refresh" content="0;url=https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">
+<style>html,body{margin:0;min-height:100%;display:grid;place-items:center;background:#f8f5fb;color:#594f61;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}a{color:#72538e}</style>
 </head>
 <body>
-<div id="s">正在载入英语站 v25…</div>
-<script>
-(async()=>{
-  const BASE='https://raw.githack.com/h675786161-prog/home/4ecf14bbc05e1fa7f484c366914a1d103db5c8eb/private-gateway/e7/index.html';
-  const ASSET='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english';
-  try{
-    const response=await fetch(BASE,{cache:'no-store'});
-    if(!response.ok)throw new Error('基础入口 '+response.status);
-    let source=await response.text();
-    const needle="    document.write(patchEnglish(data.html));";
-    const replacement=[
-      "    let appHtml=patchEnglish(data.html);",
-      "    const extras='<scr'+'ipt>(()=>{window.__englishExtrasBootstrap=25;const base=\""+ASSET+"\";const nav=document.querySelector(\".learningNav\");if(nav&&!document.getElementById(\"learningCoach\")){const box=document.createElement(\"section\");box.id=\"learningCoach\";box.style.cssText=\"margin:0 0 13px;padding:14px;border:1px solid #eadff2;border-radius:20px;background:linear-gradient(145deg,#fff,#f7f1fc);box-shadow:0 8px 24px rgba(70,48,95,.07)\";box.innerHTML=\"<b>🧭 今日学习教练正在读进度…</b><div style=\\\"margin-top:5px;font-size:11px;color:#7a7181\\\">v25 · 正在接入完整词库与学习路线</div>\";nav.after(box);}const add=(name,delay)=>setTimeout(()=>{const s=document.createElement(\"script\");s.src=base+\"?asset=\"+name+\"&v=25&t=\"+Date.now();s.async=true;s.onerror=()=>{console.warn(\"[english] optional module failed\",name);const b=document.getElementById(\"learningCoach\");if(name===\"coach\"&&b)b.innerHTML=\"<b>🧭 学习教练加载失败</b><div style=\\\"margin-top:5px;font-size:11px;color:#a85b68\\\">主页面仍可用，刷新会自动重试。</div>\";};document.head.appendChild(s);},delay);add(\"smart\",30);add(\"coach\",100);add(\"full\",320);})();</scr'+'ipt>';",
-      "    appHtml=appHtml.replace('</body>',extras+'</body>');",
-      "    document.write(appHtml);"
-    ].join('\n');
-    if(!source.includes(needle))throw new Error('入口补丁位置没找到');
-    source=source.replace(needle,replacement);
-    document.open();
-    document.write(source);
-    document.close();
-  }catch(error){
-    document.getElementById('s').textContent='载入失败：'+(error?.message||error)+'。刷新后会重试。';
-  }
-})();
-</script>
+<div>正在切到新的英语站入口…<br><a href="https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">没自动跳转就点这里</a></div>
+<script>location.replace('https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english');</script>
 </body>
 </html>
