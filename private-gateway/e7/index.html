@@ -34,6 +34,57 @@ function patchEnglish(html){
   ];
   for(const [from,to] of swaps)html=html.replace(from,to);
 
+  const vocabPoolFrom=`  function vocabPool(){
+    const p=progress();
+    return CERT_VOCAB[level()].filter(w=>vocabFilter==='review'?p.review[w.id]:vocabFilter==='new'?!p.learned[w.id]:true);
+  }`;
+  const vocabPoolTo=`  function vocabContentType(){
+    const value=localStorage.getItem('lazyEnglishVocabContent')||localStorage.getItem('lazyEnglishCardContent')||'all';
+    return ['all','word','phrase','sentence'].includes(value)?value:'all';
+  }
+  function vocabContentEligible(w){
+    const type=vocabContentType(),text=String(w?.word||'').trim(),phrase=text.split(/\\s+/).filter(Boolean).length>1;
+    if(type==='word')return !phrase;
+    if(type==='phrase')return phrase;
+    if(type==='sentence'){
+      const example=String(w?.example||'').trim();
+      if(!example||!String(w?.translation||'').trim())return false;
+      return vocabMode!=='flow'||example.toLowerCase().includes(text.toLowerCase());
+    }
+    return true;
+  }
+  function vocabPool(){
+    const p=progress();
+    return CERT_VOCAB[level()].filter(w=>(vocabFilter==='review'?p.review[w.id]:vocabFilter==='new'?!p.learned[w.id]:true)&&vocabContentEligible(w));
+  }`;
+  html=html.replace(vocabPoolFrom,vocabPoolTo);
+
+  html=html.replace(`  function flowDistractors(w,field){
+    const bank=CERT_VOCAB[level()];`,`  function flowDistractors(w,field){
+    const bank=CERT_VOCAB[level()].filter(vocabContentEligible);`);
+
+  const flowKindFrom=`  function flowKindFor(w){
+    const kinds=['en-zh','zh-en','listen','letters'];
+    if(w.example&&w.word){
+      try{if(new RegExp(flowEscapeRegExp(w.word),'i').test(w.example))kinds.push('cloze');}catch{}
+    }
+    const r=flowRecord(w),least=Math.min(...kinds.map(k=>Number(r.kinds[k]||0)));
+    const underused=kinds.filter(k=>Number(r.kinds[k]||0)===least);
+    return underused[Math.floor(Math.random()*underused.length)];
+  }`;
+  const flowKindTo=`  function flowKindFor(w){
+    const content=vocabContentType();
+    if(content==='sentence')return 'cloze';
+    const kinds=content==='phrase'?['en-zh','zh-en','listen']:['en-zh','zh-en','listen','letters'];
+    if(content==='all'&&w.example&&w.word){
+      try{if(new RegExp(flowEscapeRegExp(w.word),'i').test(w.example))kinds.push('cloze');}catch{}
+    }
+    const r=flowRecord(w),least=Math.min(...kinds.map(k=>Number(r.kinds[k]||0)));
+    const underused=kinds.filter(k=>Number(r.kinds[k]||0)===least);
+    return underused[Math.floor(Math.random()*underused.length)];
+  }`;
+  html=html.replace(flowKindFrom,flowKindTo);
+
   const memoryCompleteFrom=`    saveProgress();render();
     if(mode==='type')el('memoryInput')?.focus({preventScroll:true});`;
   const memoryCompleteTo=`    const finished=r.stage===4;
@@ -170,18 +221,17 @@ function patchEnglish(html){
 <\/script>`;
   if(!html.includes('__englishMemoryAutoAdvance=2'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
 
-  const cardFilterPatch=`<script>
+  const contentFilterPatch=`<script>
 (()=>{
   'use strict';
-  if(window.__englishCardContentFilter)return;window.__englishCardContentFilter=1;
-  const KEY='lazyEnglishCardContent',allowed=new Set(['all','word','phrase','sentence']);
-  let type=localStorage.getItem(KEY)||'all',refreshing=false;if(!allowed.has(type))type='all';
-  const originals={};try{for(const [k,v] of Object.entries(CERT_VOCAB||{}))originals[k]=Array.isArray(v)?v.slice():[];}catch{return;}
-  const $=id=>document.getElementById(id),mode=()=>String($('vocabMode')?.value||''),level=()=>String($('certificateSelect')?.value||'C1');
+  if(window.__englishCardContentFilter)return;window.__englishCardContentFilter=2;
+  const KEY='lazyEnglishVocabContent',LEGACY='lazyEnglishCardContent',allowed=new Set(['all','word','phrase','sentence']);
+  let type=localStorage.getItem(KEY)||localStorage.getItem(LEGACY)||'all';if(!allowed.has(type))type='all';localStorage.setItem(KEY,type);
+  const $=id=>document.getElementById(id),mode=()=>String($('vocabMode')?.value||''),level=()=>String($('certificateSelect')?.value||'C1'),supported=()=>['card','flow'].includes(mode());
   const isPhrase=w=>String(w?.word||'').trim().split(/\\s+/).filter(Boolean).length>1;
-  const eligible=(w,k)=>k==='word'?!isPhrase(w):k==='phrase'?isPhrase(w):k==='sentence'?!!String(w?.example||'').trim()&&!!String(w?.translation||'').trim():true;
-  const listFor=(l,k)=>{const base=originals[l]||[];return k==='all'?base:base.filter(w=>eligible(w,k));};
-  const stage=()=>{if(mode()!=='card')return;const l=level(),base=originals[l]||[],next=listFor(l,type);CERT_VOCAB[l]=next.length?next:base;setTimeout(()=>{CERT_VOCAB[l]=base;try{window.certificateUI?.renderHero?.();}catch{}},0);};
+  const sentenceReady=(w,strict=false)=>{const word=String(w?.word||'').trim().toLowerCase(),example=String(w?.example||'').trim();if(!word||!example||!String(w?.translation||'').trim())return false;return !strict||example.toLowerCase().includes(word);};
+  const eligible=(w,k,strict=false)=>k==='word'?!isPhrase(w):k==='phrase'?isPhrase(w):k==='sentence'?sentenceReady(w,strict):true;
+  const available=k=>{try{return (CERT_VOCAB[level()]||[]).some(w=>eligible(w,k,mode()==='flow'));}catch{return true;}};
   const sentenceFace=()=>{
     if(mode()!=='card'||type!=='sentence')return;const w=window.certificateUI?.currentWord?.();if(!w)return;
     const term=document.querySelector('#vocabContent .vocabTerm'),example=$('vocabExample'),meaning=$('vocabMeaning'),speak=$('vocabSpeak'),reveal=$('vocabReveal');
@@ -191,22 +241,19 @@ function patchEnglish(html){
     if(reveal)reveal.textContent='看翻译 / 关联词';if(speak)speak.onclick=()=>window.englishSpeech?.speak?.(w.example||'',{kind:'sentence'});
   };
   const controls=()=>{
-    if(mode()!=='card')return;const row=document.querySelector('.vocabFilterRow');if(!row)return;let wrap=$('vocabCardContentFilter');
-    if(!wrap){wrap=document.createElement('div');wrap.id='vocabCardContentFilter';wrap.className='vocabCardContentFilter';wrap.innerHTML='<span>刷什么</span><div class="vocabCardContentChips"><button type="button" data-card-content="all">词 / 短语</button><button type="button" data-card-content="word">只单词</button><button type="button" data-card-content="phrase">只短语</button><button type="button" data-card-content="sentence">只句子</button></div>';row.after(wrap);wrap.querySelectorAll('[data-card-content]').forEach(b=>b.onclick=()=>{const n=b.dataset.cardContent;if(!allowed.has(n)||n===type)return;type=n;localStorage.setItem(KEY,type);refresh();});}
+    if(!supported())return;const row=document.querySelector('.vocabFilterRow');if(!row)return;let wrap=$('vocabCardContentFilter');
+    if(!wrap){wrap=document.createElement('div');wrap.id='vocabCardContentFilter';wrap.className='vocabCardContentFilter';wrap.innerHTML='<span>刷什么</span><div class="vocabCardContentChips"><button type="button" data-card-content="all">混合</button><button type="button" data-card-content="word">只单词</button><button type="button" data-card-content="phrase">只短语</button><button type="button" data-card-content="sentence">只句子</button></div>';row.after(wrap);wrap.querySelectorAll('[data-card-content]').forEach(b=>b.onclick=()=>{const n=b.dataset.cardContent;if(!allowed.has(n)||n===type)return;if(n!=='all'&&!available(n)){try{toast(mode()==='flow'&&n==='sentence'?'这一组没有可做句子补词的例句':'这个证书暂时没有这一类内容');}catch{}return;}type=n;localStorage.setItem(KEY,type);refresh();});}
     wrap.querySelectorAll('[data-card-content]').forEach(b=>b.classList.toggle('active',b.dataset.cardContent===type));sentenceFace();
   };
-  const refresh=()=>{
-    if(refreshing||mode()!=='card')return;const l=level(),base=originals[l]||[],available=listFor(l,type);if(!available.length){type='all';localStorage.setItem(KEY,type);try{toast('这个证书暂时没有这一类卡片，已切回词 / 短语');}catch{}}
-    refreshing=true;CERT_VOCAB[l]=listFor(l,type);try{window.certificateUI?.refresh?.();}finally{setTimeout(()=>{CERT_VOCAB[l]=base;try{window.certificateUI?.renderHero?.();}catch{}refreshing=false;controls();},0);}
-  };
+  const refresh=()=>{if(!supported())return;if(type!=='all'&&!available(type)){type='all';localStorage.setItem(KEY,type);try{toast('这一类暂时没内容，已切回混合');}catch{}}try{window.certificateUI?.refresh?.();}catch{}setTimeout(()=>{controls();sentenceFace();},0);};
   const style=document.createElement('style');style.textContent='.vocabCardContentFilter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}.vocabCardContentFilter>span{font-size:12px;color:#7b6f84;white-space:nowrap}.vocabCardContentChips{display:flex;gap:7px;flex-wrap:wrap}.vocabCardContentChips button{border:1px solid rgba(120,92,155,.18);background:rgba(255,255,255,.72);color:inherit;border-radius:999px;padding:7px 11px;font:inherit;font-size:12px}.vocabCardContentChips button.active{background:#805ad5;color:white;border-color:#805ad5}.vocabTerm.vocabSentenceCard{font-size:clamp(20px,4.2vw,30px);line-height:1.45;text-align:left}';document.head.append(style);
   const body=$('certBody');if(body)new MutationObserver(()=>{controls();sentenceFace();}).observe(body,{subtree:true,childList:true});
-  document.addEventListener('click',e=>{if(mode()==='card'&&e.target.closest?.('#vocabKnown'))stage();if(e.target.closest?.('[data-vocab-mode="card"]'))setTimeout(()=>{controls();refresh();},0);},true);
-  document.addEventListener('change',e=>{if(mode()==='card'&&e.target?.id==='vocabFilter')stage();if(e.target?.id==='vocabMode'&&e.target.value==='card')setTimeout(()=>{controls();refresh();},0);},true);
-  setTimeout(()=>{if(mode()==='card'){controls();refresh();}},80);
+  document.addEventListener('click',e=>{if(e.target.closest?.('[data-vocab-mode="card"],[data-vocab-mode="flow"]'))setTimeout(()=>{controls();refresh();},0);},true);
+  document.addEventListener('change',e=>{if(e.target?.id==='vocabMode'&&['card','flow'].includes(e.target.value))setTimeout(()=>{controls();refresh();},0);},true);
+  setTimeout(()=>{if(supported()){controls();refresh();}},80);
 })();
 <\/script>`;
-  if(!html.includes('__englishCardContentFilter'))html=html.replace('</body>',cardFilterPatch+'</body>');
+  if(!html.includes('__englishCardContentFilter'))html=html.replace('</body>',contentFilterPatch+'</body>');
   return html;
 }
 (async()=>{
