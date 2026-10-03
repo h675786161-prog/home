@@ -1,3 +1,4 @@
+/* Generated compatibility alias. */
 /* Adaptive practice layer: spaced resurfacing, confusion drills, slot drills, dictation and a 10-minute lazy session. */
 (()=>{
   'use strict';
