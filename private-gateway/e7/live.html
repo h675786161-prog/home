@@ -13,16 +13,19 @@
 <script>
 (async()=>{
   const LATEST='https://raw.githubusercontent.com/h675786161-prog/home/main/private-gateway/e7/index.html';
+  const FALLBACK='https://raw.githack.com/h675786161-prog/home/main/private-gateway/e7/index.html';
   try{
     const response=await fetch(LATEST+'?t='+Date.now(),{cache:'no-store'});
     if(!response.ok)throw new Error('latest '+response.status);
     const source=await response.text();
-    if(!source.includes('const API='))throw new Error('最新入口内容异常');
+    const looksValid=source.includes('private-gateway/e7/index.html')&&source.includes('english-private-api')&&source.includes('document.write');
+    if(!looksValid)throw new Error('最新入口内容异常');
     document.open();
     document.write(source);
     document.close();
   }catch(error){
-    document.getElementById('s').textContent='载入失败：'+(error?.message||error)+'。刷新后会重试。';
+    document.getElementById('s').innerHTML='最新入口读取失败，正在退回稳定入口…';
+    setTimeout(()=>location.replace(FALLBACK+'?v='+Date.now()),350);
   }
 })();
 </script>
