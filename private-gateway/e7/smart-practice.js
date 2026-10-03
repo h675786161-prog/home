@@ -64,21 +64,30 @@
     const p=progress();return Object.keys(p.review||{}).length;
   }
 
+  let smartRecent=[];
   function score(w){
     const r=smart().items[keyFor(w)]||{};
-    let value=(Number(r.wrong)||0)*7-(Number(r.correct)||0)*1.5;
-    if(progress().review[w.id])value+=10;
-    if(r.nextAt&&r.nextAt<=now())value+=12;
-    if(!progress().learned[w.id])value+=2;
-    value+=Math.random()*3;
+    const p=progress();
+    let value=(Number(r.wrong)||0)*4-(Number(r.correct)||0)*.8;
+    if(!r.last)value+=11;
+    if(p.review[w.id])value+=7;
+    if(r.nextAt&&r.nextAt<=now())value+=8;
+    if(!p.learned[w.id])value+=4;
+    if(r.last)value+=Math.min(6,Math.max(0,(now()-r.last)/(6*60*60e3)));
+    value+=Math.random()*4;
     return value;
   }
   function pickWeighted(list=bank(),exclude=''){
     const pool=list.filter(w=>w?.id&&w.id!==exclude);
     if(!pool.length)return list[0]||null;
-    const sorted=[...pool].sort((a,b)=>score(b)-score(a));
-    const top=sorted.slice(0,Math.max(3,Math.ceil(sorted.length*.35)));
-    return top[Math.floor(Math.random()*top.length)]||sorted[0];
+    const recentLimit=Math.min(8,Math.max(3,Math.floor(list.length*.28)));
+    const fresh=pool.filter(w=>!smartRecent.includes(w.id));
+    const candidates=fresh.length>=Math.min(3,pool.length)?fresh:pool;
+    const sorted=[...candidates].sort((a,b)=>score(b)-score(a));
+    const top=sorted.slice(0,Math.max(5,Math.ceil(sorted.length*.65)));
+    const chosen=top[Math.floor(Math.random()*top.length)]||sorted[0];
+    if(chosen?.id){smartRecent.push(chosen.id);smartRecent=smartRecent.slice(-recentLimit);}
+    return chosen;
   }
   function distractors(w,field,count=3){
     return shuffle(bank().filter(x=>x.id!==w.id&&String(x?.[field]||'').trim()).map(x=>String(x[field]).trim()).filter((v,i,a)=>a.indexOf(v)===i)).slice(0,count);
@@ -197,7 +206,7 @@
     timer=setInterval(tick,1000);ensureDialog().addEventListener('close',()=>clearInterval(timer),{once:true});render();
   }
 
-  function updateBadge(){const badge=$('smartAdaptiveBadge');if(badge)badge.textContent='🧠 自适应回流 · 待复习 '+dueCount();}
+  function updateBadge(){const badge=$('smartAdaptiveBadge');if(badge){const text='🧠 自适应回流 · 待复习 '+dueCount();if(badge.textContent!==text)badge.textContent=text;}}
   function installBar(){
     if(window.certificateUI?.currentView?.()!=='vocab')return;
     const row=document.querySelector('.vocabFilterRow');if(!row||$('smartPracticeBar'))return;
@@ -227,6 +236,8 @@
   @media(max-width:540px){.smartOptions{grid-template-columns:1fr}.smartPracticeBar span{width:100%;margin-left:0}.smartPracticeDialog{border-radius:18px}}
   `;document.head.append(style);
 
-  const root=$('certBody');if(root)new MutationObserver(()=>{installBar();promoteDue();}).observe(root,{subtree:true,childList:true});
+  window.englishSmartPractice={openLazy,openDictation,openSlots,openConfusion,promoteDue,dueCount};
+  window.addEventListener('englishcertificaterender',()=>{installBar();promoteDue();});
   setInterval(promoteDue,60000);setTimeout(()=>{promoteDue();installBar();},120);
 })();
+
