@@ -4,30 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<meta name="theme-color" content="#f6efff">
+<meta name="theme-color" content="#f8f5fb">
 <title>懒人英语语言包</title>
-<style>html,body{margin:0;min-height:100%;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}body{display:grid;place-items:center}#s{font-size:13px;padding:18px;text-align:center;line-height:1.7}</style>
+<meta http-equiv="refresh" content="0;url=https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">
+<style>html,body{margin:0;min-height:100%;display:grid;place-items:center;background:#f8f5fb;color:#594f61;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}a{color:#72538e}</style>
 </head>
 <body>
-<div id="s">正在连接英语站最新版本…</div>
-<script>
-(async()=>{
-  const LATEST='https://raw.githubusercontent.com/h675786161-prog/home/main/private-gateway/e7/index.html';
-  const FALLBACK='https://raw.githack.com/h675786161-prog/home/main/private-gateway/e7/index.html';
-  try{
-    const response=await fetch(LATEST+'?t='+Date.now(),{cache:'no-store'});
-    if(!response.ok)throw new Error('latest '+response.status);
-    const source=await response.text();
-    const looksValid=source.includes('private-gateway/e7/index.html')&&source.includes('english-private-api')&&source.includes('document.write');
-    if(!looksValid)throw new Error('最新入口内容异常');
-    document.open();
-    document.write(source);
-    document.close();
-  }catch(error){
-    document.getElementById('s').innerHTML='最新入口读取失败，正在退回稳定入口…';
-    setTimeout(()=>location.replace(FALLBACK+'?v='+Date.now()),350);
-  }
-})();
-</script>
+<div>旧入口退休中，正在切到新站…<br><a href="https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">没跳转就点这里</a></div>
+<script>location.replace('https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english');</script>
 </body>
 </html>
