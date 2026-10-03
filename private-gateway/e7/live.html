@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#f6efff">
+<title>懒人英语语言包</title>
+<style>html,body{margin:0;min-height:100%;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}body{display:grid;place-items:center}#s{font-size:13px;padding:18px;text-align:center;line-height:1.7}</style>
+</head>
+<body>
+<div id="s">正在连接英语站最新版本…</div>
+<script>
+(async()=>{
+  const LATEST='https://raw.githubusercontent.com/h675786161-prog/home/main/private-gateway/e7/index.html';
+  try{
+    const response=await fetch(LATEST+'?t='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('latest '+response.status);
+    const source=await response.text();
+    if(!source.includes('const API='))throw new Error('最新入口内容异常');
+    document.open();
+    document.write(source);
+    document.close();
+  }catch(error){
+    document.getElementById('s').textContent='载入失败：'+(error?.message||error)+'。刷新后会重试。';
+  }
+})();
+</script>
+</body>
+</html>
