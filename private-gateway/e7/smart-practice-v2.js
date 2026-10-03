@@ -50,6 +50,9 @@
   }`;
     if(!source.includes(from))throw new Error('adaptive selector patch point missing');
     source=source.replace(from,to);
+    const exportPoint="  const root=$('certBody');if(root)new MutationObserver";
+    if(!source.includes(exportPoint))throw new Error('smart practice export point missing');
+    source=source.replace(exportPoint,"  window.englishSmartPractice={openLazy,openDictation,openSlots,openConfusion,promoteDue,dueCount};\n"+exportPoint);
     eval(source);
   }catch(error){
     console.error('[english smart practice]',error);
