@@ -135,6 +135,7 @@
   },true);
   document.addEventListener('change',event=>{if(event.target?.id==='certificateSelect')setTimeout(()=>render(true),180);},true);
   window.addEventListener('online',()=>setTimeout(()=>render(true),600));
+  window.addEventListener('englishvocabularchange',()=>render(true));
   setInterval(()=>render(false),5000);
   setTimeout(()=>render(true),250);
 })();
