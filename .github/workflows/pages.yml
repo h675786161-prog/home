@@ -1,17 +1,7 @@
 name: Deploy Home static mirror
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'private-gateway/**'
-      - 'index.html'
-      - 'app.js'
-      - 'style.css'
-      - 'styles.css'
-      - 'manifest.webmanifest'
-      - 'sw.js'
-      - '.github/workflows/pages.yml'
+  # Optional hosting migration; current public entry remains in use.
   workflow_dispatch:
 
 permissions:
