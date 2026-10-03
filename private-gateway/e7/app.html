@@ -6,69 +6,11 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="theme-color" content="#f8f5fb">
 <title>懒人英语语言包</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}
-#status{position:fixed;inset:0;display:grid;place-items:center;padding:20px;text-align:center;font-size:13px;line-height:1.7;z-index:2;background:#f8f5fb}
-#app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f8f5fb;visibility:hidden}
-</style>
+<meta http-equiv="refresh" content="0;url=https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">
+<style>html,body{margin:0;min-height:100%;display:grid;place-items:center;background:#f8f5fb;color:#594f61;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}a{color:#72538e}</style>
 </head>
 <body>
-<div id="status">正在连接英语站稳定底座…</div>
-<iframe id="app" title="懒人英语语言包" referrerpolicy="no-referrer"></iframe>
-<script>
-(()=>{
-  'use strict';
-  const CORE='https://raw.githack.com/h675786161-prog/home/4ecf14bbc05e1fa7f484c366914a1d103db5c8eb/private-gateway/e7/index.html';
-  const ASSET='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english';
-  const VERSION='26';
-  const frame=document.getElementById('app');
-  const status=document.getElementById('status');
-  const fail=message=>{status.style.display='grid';status.textContent=message;frame.style.visibility='hidden';};
-  const addScript=(doc,name,delay)=>setTimeout(()=>{
-    const s=doc.createElement('script');
-    s.src=ASSET+'?asset='+encodeURIComponent(name)+'&v='+VERSION+'&t='+Date.now();
-    s.async=true;
-    s.onerror=()=>{
-      console.warn('[english shell] module failed',name);
-      const coach=doc.getElementById('learningCoach');
-      if(name==='coach'&&coach)coach.innerHTML='<b>🧭 学习教练加载失败</b><div style="margin-top:5px;font-size:11px;color:#a85b68">主页面仍可用，刷新会自动重试。</div>';
-    };
-    doc.head.appendChild(s);
-  },delay);
-  frame.addEventListener('load',()=>{
-    try{
-      const doc=frame.contentDocument;
-      if(!doc||!doc.body)throw new Error('页面还没准备好');
-      let tries=0;
-      const boot=()=>{
-        const nav=doc.querySelector('.learningNav');
-        if(!nav&&tries++<80){setTimeout(boot,100);return;}
-        if(!nav)throw new Error('没有找到学习导航');
-        if(!doc.getElementById('learningCoach')){
-          const box=doc.createElement('section');
-          box.id='learningCoach';
-          box.style.cssText='margin:0 0 13px;padding:14px;border:1px solid #eadff2;border-radius:20px;background:linear-gradient(145deg,#fff,#f7f1fc);box-shadow:0 8px 24px rgba(70,48,95,.07)';
-          box.innerHTML='<b>🧭 今日学习教练正在读进度…</b><div style="margin-top:5px;font-size:11px;color:#7a7181">v'+VERSION+' · 正在接入完整词库与学习路线</div>';
-          nav.after(box);
-        }
-        if(!doc.getElementById('englishShellVersion')){
-          const badge=doc.createElement('div');
-          badge.id='englishShellVersion';
-          badge.textContent='v'+VERSION;
-          badge.style.cssText='position:fixed;left:10px;top:10px;z-index:9999;padding:4px 7px;border-radius:999px;background:rgba(88,65,110,.78);color:#fff;font:10px/1.2 system-ui;pointer-events:none';
-          doc.body.appendChild(badge);
-        }
-        addScript(doc,'smart',30);
-        addScript(doc,'coach',110);
-        addScript(doc,'full',300);
-        status.style.display='none';
-        frame.style.visibility='visible';
-      };
-      boot();
-    }catch(error){fail('载入失败：'+(error?.message||error)+'。刷新后会重试。');}
-  });
-  frame.src=CORE+'?shell='+VERSION+'&t='+Date.now();
-})();
-</script>
+<div>旧壳已经停用，正在打开新英语站…<br><a href="https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english">没跳转就点这里</a></div>
+<script>location.replace('https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english');</script>
 </body>
 </html>
