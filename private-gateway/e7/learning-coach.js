@@ -95,6 +95,8 @@
     box.querySelector('[data-coach-dictation]')?.addEventListener('click',()=>{openVocab();setTimeout(()=>window.englishSmartPractice?.openDictation?.(),80);});
     box.querySelector('[data-coach-plan]')?.addEventListener('click',openGoalPlanner);
     box.querySelector('[data-coach-refresh]')?.addEventListener('click',()=>render(true));
+    const details=box.querySelector('.coachDetails');
+    if(details)details.ontoggle=()=>localStorage.setItem('lazyEnglishCoachExpanded',details.open?'1':'0');
   }
   function render(force=false){
     const box=install();if(!box)return;
@@ -104,19 +106,16 @@
     const weak=r.weak.length?'最近最该收拾：'+r.weak.join(' · '):'暂时没有形成明显的顽固错词。';
     const signature=[s.level,s.total,s.known,s.due,s.today,r.left,r.plan.registered,modeKey,r.weak.join('|'),window.englishFullVocab?.loaded?.(s.level)].join(':');
     if(!force&&box.dataset.signature===signature)return;box.dataset.signature=signature;
+    const expanded=box.querySelector('.coachDetails')?.open??(localStorage.getItem('lazyEnglishCoachExpanded')==='1');
     box.innerHTML=`
-      <div class="coachHead"><div><b>🧭 今天七来带路</b><span>${esc(s.level)} · ${esc(exam)}</span></div><button type="button" class="coachGhost" data-coach-refresh>↻</button></div>
-      <div class="coachSummary">
-        <div><strong>${s.total.toLocaleString()}</strong><span>当前词库</span></div>
-        <div><strong>${s.due}</strong><span>待复习</span></div>
-        <div><strong>${coverage}%</strong><span>已熟悉</span></div>
-        <div><strong>${s.today}</strong><span>今天记录</span></div>
-      </div>
+      <div class="coachHead"><div><b>🧭 七的学习教练</b><span>${esc(s.level)} · ${esc(exam)}</span></div><button type="button" class="coachGhost" data-coach-refresh aria-label="刷新今日学习路线">↻</button></div>
+      <div class="coachCompact"><p><strong>${s.total.toLocaleString()} 个词 / 词块</strong><span>待复习 ${s.due} · 已熟悉 ${coverage}% · 今天 ${s.today} 项</span></p><button type="button" class="btn primary" data-coach-start>开始 10 分钟</button></div>
+      <details class="coachDetails" ${expanded?'open':''}><summary>今日路线 / 学习强度 <span>${esc(r.mode.label)}</span></summary>
       <div class="coachIntensity"><span>今天强度</span>${Object.entries(INTENSITY).map(([k,v])=>`<button type="button" data-intensity="${k}" class="${k===modeKey?'active':''}">${esc(v.label)}</button>`).join('')}</div>
       <p class="coachNote">${esc(r.mode.note)} ${esc(weak)}</p>
       <div class="coachRoute">${r.steps.map((x,i)=>`<div class="coachStep"><i>${i+1}</i><span>${x.icon}</span><div><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></div></div>`).join('')}</div>
-      <div class="coachActions"><button type="button" class="btn primary" data-coach-start>▶ 一键开始 10 分钟</button><button type="button" class="btn" data-coach-dictation>🎧 直接听写</button>${r.plan.targetDate?'':'<button type="button" class="btn" data-coach-plan>📅 先定考试日</button>'}</div>
-      <div class="coachFoot">${s.fullReady?'完整词库已接入今日规划。':'完整词库在后台补全，页面先照常能用，加载失败也不会堵门。'}</div>`;
+      <div class="coachActions"><button type="button" class="btn" data-coach-dictation>🎧 直接听写</button><button type="button" class="btn" data-coach-plan>${r.plan.targetDate?'📅 调整考试计划':'📅 先定考试日'}</button></div>
+      <div class="coachFoot">${s.fullReady?'完整词库已接入今日规划。':'词库正在补全，先练当前内容。'}</div></details>`;
     bind(box,s,r);
   }
 
@@ -127,6 +126,8 @@
     .coachIntensity{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.coachIntensity>span{font-size:11px;color:var(--muted);margin-right:2px}.coachIntensity button{border:1px solid #e6dced;background:#fff;color:#6c5878;border-radius:999px;padding:7px 9px;font:inherit;font-size:11px}.coachIntensity button.active{background:#765a92;color:#fff;border-color:#765a92}.coachNote{font-size:11px!important;line-height:1.55!important;color:#74677d;margin:9px 0!important}
     .coachRoute{display:grid;gap:7px}.coachStep{display:grid;grid-template-columns:25px 24px 1fr;align-items:center;gap:7px;background:rgba(255,255,255,.72);border:1px solid #eee7f4;border-radius:13px;padding:8px}.coachStep i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#eee5f7;color:#6b5182;font:700 11px system-ui;font-style:normal}.coachStep>span{font-size:18px}.coachStep b{display:block;font-size:12px}.coachStep small{display:block;color:var(--muted);font-size:10px;line-height:1.4;margin-top:2px}
     .coachActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.coachActions .btn{min-height:40px;padding:8px 10px;font-size:11px;flex:1;min-width:120px}.coachFoot{font-size:10px;color:#8a7d91;margin-top:8px}
+    .coachHead span{font-size:13px}.coachGhost{width:40px;height:40px}.coachCompact{display:flex;align-items:center;gap:14px;margin:8px 0}.coachCompact p{margin:0!important;flex:1;line-height:1.6!important;font-size:14px!important}.coachCompact strong,.coachCompact span{display:block}.coachCompact span{color:var(--muted);font-size:13px}.coachCompact .btn{font-size:14px;min-height:44px;white-space:nowrap}
+    .coachDetails{border-top:1px solid #eadff2;margin-top:10px}.coachDetails summary{cursor:pointer;min-height:42px;padding:10px 0;font-size:14px;color:#675078}.coachDetails summary>span{float:right;color:var(--muted);font-size:13px}.coachDetails .coachIntensity{margin-top:7px}.coachIntensity button{font-size:14px;min-height:40px}.coachIntensity>span{font-size:14px}.coachNote{font-size:14px!important}.coachStep b{font-size:14px}.coachStep small{font-size:13px;line-height:1.6}.coachActions .btn{font-size:14px;min-height:44px}.coachFoot{font-size:12px}
     @media(max-width:520px){.coachSummary{grid-template-columns:1fr 1fr}.coachActions .btn{min-width:45%}}
   `;document.head.append(style);
 
