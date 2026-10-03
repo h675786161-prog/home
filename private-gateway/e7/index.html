@@ -5,268 +5,35 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="theme-color" content="#f6efff">
-<title>loading…</title>
+<title>懒人英语语言包</title>
 <style>
-html,body{margin:0;min-height:100%;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}
-body{display:grid;place-items:center}
-#s{font-size:13px;padding:18px}
+html,body{margin:0;min-height:100%;background:#f8f5fb;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#594f61}body{display:grid;place-items:center}#s{font-size:13px;padding:18px;text-align:center;line-height:1.7}
 </style>
 </head>
 <body>
-<div id="s">正在载入…</div>
+<div id="s">正在载入英语站 v25…</div>
 <script>
-const API='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english-private-api';
-function patchEnglish(html){
-  const swaps=[
-    ['aria-label="打开当前页面 AI 答疑"','aria-label="打开英语 AI 答疑"'],
-    ['aria-label="当前页面 AI 答疑"','aria-label="英语 AI 答疑"'],
-    ['七 · 当前页面答疑','七 · 英语答疑'],
-    ['<span id="assistantContextBadge">📎 当前页面</span>','<span id="assistantContextBadge">📎 页面参考</span>'],
-    ['placeholder="直接问你现在不懂的地方…" aria-label="当前页面问题"','placeholder="问当前内容，也可以直接输任意单词 / 词组 / 语法…" aria-label="英语问题"'],
-    ['只发送学习内容和你的问题，API Key 不会塞进提示词。','当前页面只作参考，也可以问完全无关的英语内容。API Key 不会塞进提示词。'],
-    ['只围绕用户当前页面和问题回答，不要把 API 配置当成学习内容。','用户的问题优先，当前页面只作可选参考，不是回答范围的限制。不要把 API 配置当成学习内容。'],
-    ['如果当前页面信息不足，明确指出缺什么。','如果问题与当前页面无关，直接回答用户的问题，不要强行关联页面，也不要声称缺少页面上下文。用户可以询问任意英语单词、词组、句子、语法、表达或辨析。若用户只输入一个英文单词或短语，默认说明核心中文意思、常见用法和简短自然例句。'],
-    ["byId('assistantContextBadge').textContent='📎 已读取：'+ctx.label;","byId('assistantContextBadge').textContent='📎 页面参考：'+ctx.label;"],
-    ["byId('assistantInput').value='';byId('assistantStatus').textContent='正在根据 '+ctx.label+' 回答…';","byId('assistantInput').value='';byId('assistantStatus').textContent='正在回答你的问题…';"],
-    ["byId('assistantStatus').textContent='已回答 · 当前上下文：'+ctx.label;","byId('assistantStatus').textContent='已回答 · 页面只作参考：'+ctx.label;"],
-    ["byId('assistantStatus').textContent='对话已清空，当前页面仍会自动读取。';","byId('assistantStatus').textContent='对话已清空。可以问当前页面，也可以问别的英语内容。';"],
-    ["stopPending('已切换学习内容，旧请求已停止');\n      history=[];","stopPending('学习页面已切换，页面参考已更新');"]
-  ];
-  for(const [from,to] of swaps)html=html.replace(from,to);
-
-  const vocabPoolFrom=`  function vocabPool(){
-    const p=progress();
-    return CERT_VOCAB[level()].filter(w=>vocabFilter==='review'?p.review[w.id]:vocabFilter==='new'?!p.learned[w.id]:true);
-  }`;
-  const vocabPoolTo=`  function vocabContentType(){
-    const value=localStorage.getItem('lazyEnglishVocabContent')||localStorage.getItem('lazyEnglishCardContent')||'all';
-    return ['all','word','phrase','sentence'].includes(value)?value:'all';
-  }
-  function vocabContentEligible(w){
-    const type=vocabContentType(),text=String(w?.word||'').trim(),phrase=text.split(/\\s+/).filter(Boolean).length>1;
-    if(type==='word')return !phrase;
-    if(type==='phrase')return phrase;
-    if(type==='sentence'){
-      const example=String(w?.example||'').trim();
-      if(!example||!String(w?.translation||'').trim())return false;
-      return vocabMode!=='flow'||example.toLowerCase().includes(text.toLowerCase());
-    }
-    return true;
-  }
-  function vocabPool(){
-    const p=progress();
-    return CERT_VOCAB[level()].filter(w=>(vocabFilter==='review'?p.review[w.id]:vocabFilter==='new'?!p.learned[w.id]:true)&&vocabContentEligible(w));
-  }`;
-  html=html.replace(vocabPoolFrom,vocabPoolTo);
-
-  html=html.replace(`  function flowDistractors(w,field){
-    const bank=CERT_VOCAB[level()];`,`  function flowDistractors(w,field){
-    const bank=CERT_VOCAB[level()].filter(vocabContentEligible);`);
-
-  const flowKindFrom=`  function flowKindFor(w){
-    const kinds=['en-zh','zh-en','listen','letters'];
-    if(w.example&&w.word){
-      try{if(new RegExp(flowEscapeRegExp(w.word),'i').test(w.example))kinds.push('cloze');}catch{}
-    }
-    const r=flowRecord(w),least=Math.min(...kinds.map(k=>Number(r.kinds[k]||0)));
-    const underused=kinds.filter(k=>Number(r.kinds[k]||0)===least);
-    return underused[Math.floor(Math.random()*underused.length)];
-  }`;
-  const flowKindTo=`  function flowKindFor(w){
-    const content=vocabContentType();
-    if(content==='sentence')return 'cloze';
-    const kinds=content==='phrase'?['en-zh','zh-en','listen']:['en-zh','zh-en','listen','letters'];
-    if(content==='all'&&w.example&&w.word){
-      try{if(new RegExp(flowEscapeRegExp(w.word),'i').test(w.example))kinds.push('cloze');}catch{}
-    }
-    const r=flowRecord(w),least=Math.min(...kinds.map(k=>Number(r.kinds[k]||0)));
-    const underused=kinds.filter(k=>Number(r.kinds[k]||0)===least);
-    return underused[Math.floor(Math.random()*underused.length)];
-  }`;
-  html=html.replace(flowKindFrom,flowKindTo);
-
-  const memoryCompleteFrom=`    saveProgress();render();
-    if(mode==='type')el('memoryInput')?.focus({preventScroll:true});`;
-  const memoryCompleteTo=`    const finished=r.stage===4;
-    saveProgress();render();
-    if(finished&&window.certificateUI?.currentView?.()==='vocab'){
-      setTimeout(()=>document.getElementById('vocabKnown')?.click(),80);
-      return;
-    }
-    if(mode==='type')el('memoryInput')?.focus({preventScroll:true});`;
-  html=html.replace(memoryCompleteFrom,memoryCompleteTo);
-
-  const retryPatch=`<script>
-(()=>{
-  'use strict';
-  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  const transient=error=>{
-    const message=String(error?.message||error||'');
-    return /Failed to fetch|NetworkError|Load failed|fetch failed|ECONN|ENET|网络|连接中断|接口 (502|503|504)/i.test(message);
-  };
-  const original=window.callAI;
-  if(typeof original==='function'&&!original.__englishRetryWrapped){
-    const wrapped=async function(userPrompt,opts={}){
-      try{return await original(userPrompt,opts);}
-      catch(error){
-        if(opts?.signal?.aborted||!transient(error))throw error;
-        const status=document.getElementById('assistantStatus');
-        if(status)status.textContent='连接抖了一下，正在自动重试 1 次…';
-        await sleep(700);
-        if(opts?.signal?.aborted)throw error;
-        return original(userPrompt,opts);
-      }
-    };
-    wrapped.__englishRetryWrapped=true;
-    window.callAI=wrapped;
-  }
-  const addRetry=message=>{
-    if(!message||message.querySelector('.assistantRetryActions'))return;
-    const answer=message.querySelector('.aiAnswer');
-    const question=message.querySelector('.aiQuestion')?.textContent?.trim();
-    if(!answer||!question||!/^没接上[:：]/.test(answer.textContent.trim()))return;
-    const row=document.createElement('div');
-    row.className='assistantRetryActions';
-    row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
-    const retry=document.createElement('button');
-    retry.type='button';retry.className='btn primary';retry.textContent='↻ 重试';
-    retry.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
-    retry.onclick=()=>{retry.disabled=true;retry.textContent='重试中…';message.remove();window.englishAssistant?.ask?.(question);};
-    const settings=document.createElement('button');
-    settings.type='button';settings.className='btn';settings.textContent='⚙ API 设置';
-    settings.style.cssText='padding:8px 12px;min-height:38px;font-size:12px';
-    settings.onclick=()=>window.englishAssistant?.open?.(true);
-    row.append(retry,settings);answer.append(row);
-    const status=document.getElementById('assistantStatus');
-    if(status)status.textContent='连接失败 · 可以直接重试';
-  };
-  const scan=()=>document.querySelectorAll('#assistantThread .aiMessage').forEach(addRetry);
-  const thread=document.getElementById('assistantThread');
-  if(thread){new MutationObserver(scan).observe(thread,{subtree:true,childList:true,characterData:true});scan();}
-})();
-<\/script>`;
-  if(!html.includes('assistantRetryActions'))html=html.replace('</body>',retryPatch+'</body>');
-
-  const vocabSafetyPatch=`<script>
-(()=>{
-  'use strict';
-  window.__englishVocabSafety=1;
-  const byId=id=>document.getElementById(id);
-  let repairing=false,lastRepair=0;
-  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';} };
-  const usable=()=>{
-    const root=byId('vocabContent');if(!root)return true;
-    const swipe=root.querySelector('.vocabSwipeCard');
-    if(swipe){
-      const prompt=swipe.querySelector('.vocabSwipePrompt')?.textContent?.trim()||'';
-      const choices=[...root.querySelectorAll('.vocabSwipeChoice')].some(b=>b.textContent.trim().length>2);
-      return !!prompt&&choices;
-    }
-    if(root.querySelector('.vocabTerm')?.textContent?.trim())return true;
-    return !!root.querySelector('#vocabMemoryInline,#vocabAnswer');
-  };
-  const setAll=()=>{
-    const filter=byId('vocabFilter');if(!filter||filter.value==='all')return false;
-    filter.value='all';filter.dispatchEvent(new Event('change',{bubbles:true}));return true;
-  };
-  const repair=()=>{
-    if(repairing||currentView()!=='vocab')return;
-    const root=byId('vocabContent');if(!root)return;
-    const now=Date.now();if(now-lastRepair<220)return;
-    if(/这一组已经清空/.test(root.textContent||'')){lastRepair=now;if(setAll())return;}
-    if(usable())return;
-    repairing=true;lastRepair=now;
-    setTimeout(()=>{
-      try{if(currentView()==='vocab'&&!usable()){if(!setAll())window.certificateUI?.refresh?.();}}
-      finally{setTimeout(()=>{repairing=false;},120);}
-    },60);
-  };
-  try{
-    if(typeof CERT_VOCAB==='object'&&CERT_VOCAB){
-      for(const key of Object.keys(CERT_VOCAB)){
-        const list=Array.isArray(CERT_VOCAB[key])?CERT_VOCAB[key]:[];
-        CERT_VOCAB[key]=list.filter(w=>String(w?.word||'').trim()&&String(w?.meaning||'').trim());
-      }
-    }
-  }catch{}
-  const body=byId('certBody');if(body)new MutationObserver(repair).observe(body,{subtree:true,childList:true,characterData:true});
-  document.addEventListener('click',e=>{if(e.target.closest?.('#vocabKnown,#vocabFlowNext'))setTimeout(repair,280);},true);
-  window.addEventListener('englishcontextchange',()=>setTimeout(repair,20));
-  setTimeout(repair,120);
-})();
-<\/script>`;
-  if(!html.includes('__englishVocabSafety'))html=html.replace('</body>',vocabSafetyPatch+'</body>');
-
-  const memoryAdvancePatch=`<script>
-(()=>{
-  'use strict';
-  window.__englishMemoryAutoAdvance=2;
-  let advancing=false;
-  const currentView=()=>{try{return window.certificateUI?.currentView?.()||'';}catch{return '';} };
-  const maybeAdvance=()=>{
-    if(advancing||currentView()!=='vocab')return;
-    const done=document.getElementById('memoryAgain');
-    const known=document.getElementById('vocabKnown');
-    if(!done||!known||!done.closest('#vocabMemoryInline'))return;
-    advancing=true;done.disabled=true;
-    setTimeout(()=>{
-      try{const next=document.getElementById('vocabKnown');if(next&&currentView()==='vocab')next.click();}
-      finally{setTimeout(()=>{advancing=false;},450);}
-    },80);
-  };
-  const body=document.getElementById('certBody');
-  if(body)new MutationObserver(maybeAdvance).observe(body,{subtree:true,childList:true,characterData:true});
-  setTimeout(maybeAdvance,120);
-})();
-<\/script>`;
-  if(!html.includes('__englishMemoryAutoAdvance=2'))html=html.replace('</body>',memoryAdvancePatch+'</body>');
-
-  const contentFilterPatch=`<script>
-(()=>{
-  'use strict';
-  if(window.__englishCardContentFilter)return;window.__englishCardContentFilter=2;
-  const KEY='lazyEnglishVocabContent',LEGACY='lazyEnglishCardContent',allowed=new Set(['all','word','phrase','sentence']);
-  let type=localStorage.getItem(KEY)||localStorage.getItem(LEGACY)||'all';if(!allowed.has(type))type='all';localStorage.setItem(KEY,type);
-  const $=id=>document.getElementById(id),mode=()=>String($('vocabMode')?.value||''),level=()=>String($('certificateSelect')?.value||'C1'),supported=()=>['card','flow'].includes(mode());
-  const isPhrase=w=>String(w?.word||'').trim().split(/\\s+/).filter(Boolean).length>1;
-  const sentenceReady=(w,strict=false)=>{const word=String(w?.word||'').trim().toLowerCase(),example=String(w?.example||'').trim();if(!word||!example||!String(w?.translation||'').trim())return false;return !strict||example.toLowerCase().includes(word);};
-  const eligible=(w,k,strict=false)=>k==='word'?!isPhrase(w):k==='phrase'?isPhrase(w):k==='sentence'?sentenceReady(w,strict):true;
-  const available=k=>{try{return (CERT_VOCAB[level()]||[]).some(w=>eligible(w,k,mode()==='flow'));}catch{return true;}};
-  const sentenceFace=()=>{
-    if(mode()!=='card'||type!=='sentence')return;const w=window.certificateUI?.currentWord?.();if(!w)return;
-    const term=document.querySelector('#vocabContent .vocabTerm'),example=$('vocabExample'),meaning=$('vocabMeaning'),speak=$('vocabSpeak'),reveal=$('vocabReveal');
-    if(term){term.classList.add('vocabSentenceCard');if(typeof tokenizeClickable==='function')term.innerHTML=tokenizeClickable(w.example||'');else term.textContent=w.example||'';try{if(typeof bindWordTaps==='function')bindWordTaps(term,w.example||'');}catch{}}
-    if(example)example.textContent='关联词 / 短语：'+String(w.word||'')+' · '+String(w.meaning||'');
-    if(meaning)meaning.textContent=String(w.translation||'')+'\\n\\n关联词 / 短语：'+String(w.word||'')+' · '+String(w.meaning||'')+(w.chunk?'\\n词块：'+w.chunk:'');
-    if(reveal)reveal.textContent='看翻译 / 关联词';if(speak)speak.onclick=()=>window.englishSpeech?.speak?.(w.example||'',{kind:'sentence'});
-  };
-  const controls=()=>{
-    if(!supported())return;const row=document.querySelector('.vocabFilterRow');if(!row)return;let wrap=$('vocabCardContentFilter');
-    if(!wrap){wrap=document.createElement('div');wrap.id='vocabCardContentFilter';wrap.className='vocabCardContentFilter';wrap.innerHTML='<span>刷什么</span><div class="vocabCardContentChips"><button type="button" data-card-content="all">混合</button><button type="button" data-card-content="word">只单词</button><button type="button" data-card-content="phrase">只短语</button><button type="button" data-card-content="sentence">只句子</button></div>';row.after(wrap);wrap.querySelectorAll('[data-card-content]').forEach(b=>b.onclick=()=>{const n=b.dataset.cardContent;if(!allowed.has(n)||n===type)return;if(n!=='all'&&!available(n)){try{toast(mode()==='flow'&&n==='sentence'?'这一组没有可做句子补词的例句':'这个证书暂时没有这一类内容');}catch{}return;}type=n;localStorage.setItem(KEY,type);refresh();});}
-    wrap.querySelectorAll('[data-card-content]').forEach(b=>b.classList.toggle('active',b.dataset.cardContent===type));sentenceFace();
-  };
-  const refresh=()=>{if(!supported())return;if(type!=='all'&&!available(type)){type='all';localStorage.setItem(KEY,type);try{toast('这一类暂时没内容，已切回混合');}catch{}}try{window.certificateUI?.refresh?.();}catch{}setTimeout(()=>{controls();sentenceFace();},0);};
-  const style=document.createElement('style');style.textContent='.vocabCardContentFilter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}.vocabCardContentFilter>span{font-size:12px;color:#7b6f84;white-space:nowrap}.vocabCardContentChips{display:flex;gap:7px;flex-wrap:wrap}.vocabCardContentChips button{border:1px solid rgba(120,92,155,.18);background:rgba(255,255,255,.72);color:inherit;border-radius:999px;padding:7px 11px;font:inherit;font-size:12px}.vocabCardContentChips button.active{background:#805ad5;color:white;border-color:#805ad5}.vocabTerm.vocabSentenceCard{font-size:clamp(20px,4.2vw,30px);line-height:1.45;text-align:left}';document.head.append(style);
-  const body=$('certBody');if(body)new MutationObserver(()=>{controls();sentenceFace();}).observe(body,{subtree:true,childList:true});
-  document.addEventListener('click',e=>{if(e.target.closest?.('[data-vocab-mode="card"],[data-vocab-mode="flow"]'))setTimeout(()=>{controls();refresh();},0);},true);
-  document.addEventListener('change',e=>{if(e.target?.id==='vocabMode'&&['card','flow'].includes(e.target.value))setTimeout(()=>{controls();refresh();},0);},true);
-  setTimeout(()=>{if(supported()){controls();refresh();}},80);
-})();
-<\/script>`;
-  if(!html.includes('__englishCardContentFilter'))html=html.replace('</body>',contentFilterPatch+'</body>');
-  return html;
-}
 (async()=>{
+  const BASE='https://raw.githack.com/h675786161-prog/home/4ecf14bbc05e1fa7f484c366914a1d103db5c8eb/private-gateway/e7/index.html';
+  const ASSET='https://ibpffxzdjvgydnhmvmvc.supabase.co/functions/v1/english';
   try{
-    const r=await fetch(API,{cache:'no-store'});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const data=await r.json();
-    if(!data.html)throw new Error('empty html');
+    const response=await fetch(BASE,{cache:'no-store'});
+    if(!response.ok)throw new Error('基础入口 '+response.status);
+    let source=await response.text();
+    const needle="    document.write(patchEnglish(data.html));";
+    const replacement=[
+      "    let appHtml=patchEnglish(data.html);",
+      "    const extras='<scr'+'ipt>(()=>{window.__englishExtrasBootstrap=25;const base=\""+ASSET+"\";const nav=document.querySelector(\".learningNav\");if(nav&&!document.getElementById(\"learningCoach\")){const box=document.createElement(\"section\");box.id=\"learningCoach\";box.style.cssText=\"margin:0 0 13px;padding:14px;border:1px solid #eadff2;border-radius:20px;background:linear-gradient(145deg,#fff,#f7f1fc);box-shadow:0 8px 24px rgba(70,48,95,.07)\";box.innerHTML=\"<b>🧭 今日学习教练正在读进度…</b><div style=\\\"margin-top:5px;font-size:11px;color:#7a7181\\\">v25 · 正在接入完整词库与学习路线</div>\";nav.after(box);}const add=(name,delay)=>setTimeout(()=>{const s=document.createElement(\"script\");s.src=base+\"?asset=\"+name+\"&v=25&t=\"+Date.now();s.async=true;s.onerror=()=>{console.warn(\"[english] optional module failed\",name);const b=document.getElementById(\"learningCoach\");if(name===\"coach\"&&b)b.innerHTML=\"<b>🧭 学习教练加载失败</b><div style=\\\"margin-top:5px;font-size:11px;color:#a85b68\\\">主页面仍可用，刷新会自动重试。</div>\";};document.head.appendChild(s);},delay);add(\"smart\",30);add(\"coach\",100);add(\"full\",320);})();</scr'+'ipt>';",
+      "    appHtml=appHtml.replace('</body>',extras+'</body>');",
+      "    document.write(appHtml);"
+    ].join('\n');
+    if(!source.includes(needle))throw new Error('入口补丁位置没找到');
+    source=source.replace(needle,replacement);
     document.open();
-    document.write(patchEnglish(data.html));
+    document.write(source);
     document.close();
-  }catch(e){
-    document.getElementById('s').textContent='载入失败：'+(e.message||e);
+  }catch(error){
+    document.getElementById('s').textContent='载入失败：'+(error?.message||error)+'。刷新后会重试。';
   }
 })();
 </script>
