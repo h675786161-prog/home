@@ -15,7 +15,7 @@
   function record(stage,target,detail){diagnostic.events.push({stage,target,detail,at:Date.now()});diagnostic.events=diagnostic.events.slice(-20);}
   try{for(const t of Object.keys(TARGETS)){if(!Array.isArray(CERT_VOCAB[t]))throw new Error('Missing base bank '+t);starter[t]=CERT_VOCAB[t].slice();targets[t]={state:'idle',count:starter[t].length};}}
   catch(error){diagnostic.state='no-base-bank';diagnostic.error=String(error.message||error);console.error('[english vocab]',error);return;}
-  function snapshot(){return {...diagnostic,load:undefined,count:undefined,loaded:undefined,snapshot:undefined,selected:current(),counts:Object.fromEntries(Object.keys(TARGETS).map(t=>[t,CERT_VOCAB[t].length])),ui:{view:window.certificateUI?.currentView?.(),pool:document.querySelector('.vocabPoolCount')?.textContent||'',hero:$('certFocus')?.textContent||''}};}
+  function snapshot(){return {...diagnostic,load:undefined,count:undefined,loaded:undefined,snapshot:undefined,selected:current(),counts:Object.fromEntries(Object.keys(TARGETS).map(t=>[t,CERT_VOCAB[t].length])),progress:Object.fromEntries(Object.keys(TARGETS).map(t=>{const p=state.certificates?.[t]||{};return [t,{learned:Object.keys(p.learned||{}).length,review:Object.keys(p.review||{}).length,writes:p.writes||0,attempts:p.attempts?.length||0}];})),ui:{view:window.certificateUI?.currentView?.(),pool:document.querySelector('.vocabPoolCount')?.textContent||'',hero:$('certFocus')?.textContent||''}};}
   function publish(){
     const t=current(),s=targets[t];diagnostic.state=s?.state||'idle';diagnostic.lastCount=CERT_VOCAB[t]?.length||0;
     const row=document.querySelector('.vocabFilterRow');

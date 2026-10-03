@@ -2782,7 +2782,7 @@ setTimeout(()=>{const cfg=loadSyncCfg();if(cfg.code&&cfg.enabled!==false&&cfg.au
     if(view==='writing')renderWriting();
     if(view==='resources')renderResources();
     watchMock();
-    window.dispatchEvent(new CustomEvent('englishcertificaterender',{detail:{level:level(),view}}));
+    if(view!=='vocab')window.dispatchEvent(new CustomEvent('englishcertificaterender',{detail:{level:level(),view}}));
   }
   function vocabPool(){
     const p=progress();
@@ -2919,6 +2919,7 @@ setTimeout(()=>{const cfg=loadSyncCfg();if(cfg.code&&cfg.enabled!==false&&cfg.au
     setTimeout(next,245);
   }
   function renderVocab(){
+    try{
     window.englishMemory?.close();clearTimeout(vocabFlowTimer);vocabFlowTimer=null;vocabFlowLocked=false;
     const p=progress(),pool=vocabPool();
     if(!pool.some(w=>w.id===vocabId))vocabId=pool[0]?.id||null;
@@ -2932,7 +2933,15 @@ setTimeout(()=>{const cfg=loadSyncCfg();if(cfg.code&&cfg.enabled!==false&&cfg.au
     const setMode=next=>{vocabMode=next;localStorage.setItem('lazyEnglishVocabMode',vocabMode);vocabRevealed=false;vocabFlowKind='';clearCertAI();renderVocab();};
     el('vocabMode').onchange=e=>setMode(e.target.value);
     document.querySelectorAll('.vocabModeChip').forEach(b=>b.onclick=()=>setMode(b.dataset.vocabMode));
-    el('vocabListToggle').onclick=()=>{const list=el('vocabList');list.hidden=!list.hidden;if(!list.hidden){list.innerHTML=pool.map(x=>'<button data-vocab="'+escapeHtml(x.id)+'"><b>'+escapeHtml(x.word)+'</b> · '+escapeHtml(x.meaning)+(p.learned[x.id]?' ✓':'')+(p.review[x.id]?' · 待复习':'')+'</button>').join('');list.querySelectorAll('button').forEach(b=>b.onclick=()=>{vocabId=b.dataset.vocab;vocabRevealed=false;vocabFlowKind='';clearCertAI();renderVocab();});}};
+    el('vocabListToggle').onclick=()=>{
+      const list=el('vocabList');list.hidden=!list.hidden;if(list.hidden)return;
+      list.replaceChildren();let shown=0;
+      const more=document.createElement('button');more.type='button';more.className='btn';more.id='vocabListMore';list.append(more);
+      const append=()=>{const batch=pool.slice(shown,shown+100);shown+=batch.length;
+        more.insertAdjacentHTML('beforebegin',batch.map(x=>'<button data-vocab="'+escapeHtml(x.id)+'"><b>'+escapeHtml(x.word)+'</b> · '+escapeHtml(x.meaning)+(p.learned[x.id]?' ✓':'')+(p.review[x.id]?' · 待复习':'')+'</button>').join(''));
+        more.textContent='继续浏览 · '+shown+' / '+pool.length;more.hidden=shown>=pool.length;};
+      more.onclick=append;list.onclick=e=>{const b=e.target.closest('[data-vocab]');if(!b)return;vocabId=b.dataset.vocab;vocabRevealed=false;vocabFlowKind='';clearCertAI();renderVocab();};append();
+    };
     if(!w){el('vocabContent').innerHTML='<p>这一组已经清空了 ✓ 可以切回全部词库继续练。</p>';return;}
     const position=CERT_VOCAB[level()].indexOf(w)+1;
     const spell=vocabMode==='spell',memory=vocabMode==='memory',flow=vocabMode==='flow';
@@ -3044,6 +3053,8 @@ setTimeout(()=>{const cfg=loadSyncCfg();if(cfg.code&&cfg.enabled!==false&&cfg.au
       el('vocabAnswer').addEventListener('input',()=>{window.englishTutor.cancel(el('vocabFeedback'));el('vocabCheck').disabled=false;el('vocabFeedback').hidden=true;});
       el('vocabAnswer').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)el('vocabCheck').click();};
     }
+  }
+    finally{window.dispatchEvent(new CustomEvent('englishcertificaterender',{detail:{level:level(),view}}));}
   }
   function allQuestions(){return [...CERT_QUESTIONS[level()],...progress().imports];}
   function answers(q){return Array.isArray(q.answer)?q.answer:[q.answer];}
@@ -3692,7 +3703,7 @@ setTimeout(()=>{const cfg=loadSyncCfg();if(cfg.code&&cfg.enabled!==false&&cfg.au
   function record(stage,target,detail){diagnostic.events.push({stage,target,detail,at:Date.now()});diagnostic.events=diagnostic.events.slice(-20);}
   try{for(const t of Object.keys(TARGETS)){if(!Array.isArray(CERT_VOCAB[t]))throw new Error('Missing base bank '+t);starter[t]=CERT_VOCAB[t].slice();targets[t]={state:'idle',count:starter[t].length};}}
   catch(error){diagnostic.state='no-base-bank';diagnostic.error=String(error.message||error);console.error('[english vocab]',error);return;}
-  function snapshot(){return {...diagnostic,load:undefined,count:undefined,loaded:undefined,snapshot:undefined,selected:current(),counts:Object.fromEntries(Object.keys(TARGETS).map(t=>[t,CERT_VOCAB[t].length])),ui:{view:window.certificateUI?.currentView?.(),pool:document.querySelector('.vocabPoolCount')?.textContent||'',hero:$('certFocus')?.textContent||''}};}
+  function snapshot(){return {...diagnostic,load:undefined,count:undefined,loaded:undefined,snapshot:undefined,selected:current(),counts:Object.fromEntries(Object.keys(TARGETS).map(t=>[t,CERT_VOCAB[t].length])),progress:Object.fromEntries(Object.keys(TARGETS).map(t=>{const p=state.certificates?.[t]||{};return [t,{learned:Object.keys(p.learned||{}).length,review:Object.keys(p.review||{}).length,writes:p.writes||0,attempts:p.attempts?.length||0}];})),ui:{view:window.certificateUI?.currentView?.(),pool:document.querySelector('.vocabPoolCount')?.textContent||'',hero:$('certFocus')?.textContent||''}};}
   function publish(){
     const t=current(),s=targets[t];diagnostic.state=s?.state||'idle';diagnostic.lastCount=CERT_VOCAB[t]?.length||0;
     const row=document.querySelector('.vocabFilterRow');
